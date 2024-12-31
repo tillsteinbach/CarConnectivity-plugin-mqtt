@@ -33,7 +33,8 @@ class Plugin(BasePlugin):
         BasePlugin.__init__(self, car_connectivity, config)
         LOG.info("Loading MQTT plugin with config %s", self.config)
 
-        self._background_thread: Optional[threading.Thread] = None
+        self._background_connect_thread: Optional[threading.Thread] = None
+        self._background_publish_topics_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
         if 'broker' not in self.config or not self.config['broker']:
@@ -60,7 +61,7 @@ class Plugin(BasePlugin):
         if 'keepalive' in self.config and self.config['keepalive'] is not None:
             self.mqttkeepalive: int = self.config['keepalive']
         else:
-            self.mqttkeepalive: int = 60
+            self.mqttkeepalive: int = 30
 
         if 'username' in self.config:
             self.mqttusername: Optional[str] = self.config['username']
@@ -212,13 +213,15 @@ class Plugin(BasePlugin):
     def startup(self) -> None:
         LOG.info("Starting MQTT plugin")
         self._stop_event.clear()
-        self._background_thread = threading.Thread(target=self._background_conenct_loop, daemon=True)
-        self._background_thread.start()
+        self._background_connect_thread = threading.Thread(target=self._background_connect_loop, daemon=True)
+        self._background_connect_thread.start()
         self.mqtt_client.loop_start()
+        self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=True)
+        self._background_publish_topics_thread.start()
+        
         LOG.debug("Starting MQTT plugin done")
 
-    def _background_conenct_loop(self) -> None:
-        self._stop_event.clear()
+    def _background_connect_loop(self) -> None:
         while not self._stop_event.is_set():
             try:
                 LOG.info('Connecting to MQTT-Server %s:%d', self.mqttbroker, self.mqttport)
@@ -227,6 +230,11 @@ class Plugin(BasePlugin):
             except ConnectionRefusedError as e:
                 LOG.error('Could not connect to MQTT-Server: %s, will retry in 10 seconds', e)
                 self._stop_event.wait(10)
+
+    def _background_publish_topics_loop(self) -> None:
+        while not self._stop_event.is_set():
+            self.mqtt_client.publish_topics()
+            self._stop_event.wait(10)
 
     def shutdown(self) -> None:
         """
@@ -241,8 +249,8 @@ class Plugin(BasePlugin):
         """
         self.mqtt_client.loop_stop()
         self._stop_event.set()
-        if self._background_thread is not None:
-            self._background_thread.join()
+        if self._background_connect_thread is not None:
+            self._background_connect_thread.join()
         return super().shutdown()
 
     def get_version(self) -> str:

@@ -73,6 +73,8 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
 
     default_temp = os.path.join(tempfile.gettempdir(), 'carconnectivity.token')
     parser.add_argument('--tokenfile', help=f'file to store token (default: {default_temp})', default=default_temp)
+    default_cache_temp = os.path.join(tempfile.gettempdir(), 'carconnectivity.cache')
+    parser.add_argument('--cachefile', help=f'file to store cache (default: {default_cache_temp})', default=default_cache_temp)
 
     logging_group = parser.add_argument_group('Logging')
     logging_group.add_argument('-v', '--verbose', action="append_const", help='Logging level (verbosity)', const=-1,)
@@ -96,18 +98,17 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
         with open(file=args.config, mode='r', encoding='utf-8') as config_file:
             try:
                 config_dict = json.load(config_file)
-                car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile)
-            
-                while True:
-                    time.sleep(1)
+                car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile, cache_file=args.cachefile)
+                try:
+                    while True:
+                        time.sleep(1)
+                except KeyboardInterrupt:
+                    LOG.info('Keyboard interrupt received, shutting down...')
+
+                    car_connectivity.shutdown()
             except json.JSONDecodeError as e:
                 LOG.critical('Could not load configuration file %s (%s)', args.config, e)
                 sys.exit(-1)
-
-            except KeyboardInterrupt:
-                LOG.info('Keyboard interrupt received, shutting down...')
-
-                car_connectivity.shutdown()
     except errors.AuthenticationError as e:
         LOG.critical('There was a problem when authenticating with one or multiple services: %s', e)
         sys.exit(-1)

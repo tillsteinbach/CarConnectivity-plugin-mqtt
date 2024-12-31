@@ -72,7 +72,7 @@ class CarConnectivityMQTTClient(paho.mqtt.client.Client):  # pylint: disable=too
                 self.topics.sort()
                 self.topics_changed = True
 
-    def _publish_topics(self):
+    def publish_topics(self):
         if self.topics_changed:
             self.topics_changed = False
             topicstopic = f'{self.prefix}/mqtt/topics'
@@ -83,7 +83,7 @@ class CarConnectivityMQTTClient(paho.mqtt.client.Client):  # pylint: disable=too
 
         if self.writeable_topics_changed:
             self.writeable_topics_changed = False
-            writeabletopicstopic = f'{self.prefix}/mqtt/writeableTopics'
+            writeabletopicstopic = f'{self.prefix}/mqtt/writeable_topics'
             content = ',\n'.join(self.writeable_topics)
             self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content)
             if writeabletopicstopic not in self.topics:
@@ -178,14 +178,37 @@ class CarConnectivityMQTTClient(paho.mqtt.client.Client):  # pylint: disable=too
         del properties
         if reason_code == 0:
             LOG.info('Connected to MQTT broker')
-            topic = f'{self.prefix}/mqtt/carconnectivityForceUpdate_writetopic'
-            self.subscribe(topic, qos=2)
-            if topic not in self.topics:
-                self._add_topic(topic, writeable=True)
+            force_update_topic: str = f'{self.prefix}/mqtt/carconnectivityForceUpdate_writetopic'
+            self.subscribe(force_update_topic, qos=2)
+            if force_update_topic not in self.topics:
+                self._add_topic(force_update_topic, writeable=True)
 
             # Subscribe again to all writeable topics after a reconnect
             for writeable_topic in self.writeable_topics:
                 self.subscribe(writeable_topic, qos=1)
+
+            # Handle topics that are already there
+            all_attributes = self.car_connectivity.get_attributes(recursive=True)
+            for attribute in all_attributes:
+                if attribute.enabled:
+                    attribute_topic: str = f'{self.prefix}{attribute.get_absolute_path()}'
+                    # Skip topics that are filtered
+                    if self.topic_filter_regex is not None and self.topic_filter_regex.match(attribute_topic):
+                        continue
+                    # if attribute is changeable, subscribe to it and add it to the list of writeable topics
+                    if isinstance(attribute, attributes.ChangeableAttribute):
+                        LOG.debug('Subscribe for attribute %s%s', self.prefix, attribute.get_absolute_path())
+                        self.subscribe(attribute_topic, qos=1)
+                        if attribute_topic not in self.topics:
+                            self._add_topic(attribute_topic, writeable=True)
+                    # if attribute is not writeable, add it to the list of topics
+                    elif isinstance(attributes, attributes.GenericAttribute):
+                        if attribute_topic not in self.topics:
+                            self._add_topic(attribute_topic)
+                    # if attribute has a value, publish it
+                    if attribute.value is not None:
+                        converted_value = self.convert_value(attribute.value)
+                        self.publish(topic=attribute_topic, qos=1, retain=True, payload=converted_value)
 
             self._set_connected()
 
