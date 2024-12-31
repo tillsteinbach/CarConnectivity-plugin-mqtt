@@ -128,3 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .DS_Store
+src/carconnectivity_plugins/mqtt/_version.py

@@ -1,0 +1,249 @@
+"""Module implements the plugin to connect with MQTT brokers."""
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+import os
+import threading
+import logging
+import netrc
+import locale
+import ssl
+
+import paho.mqtt.client
+
+from carconnectivity_plugins.base.plugin import BasePlugin
+from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient
+from carconnectivity_plugins.mqtt._version import __version__
+
+if TYPE_CHECKING:
+    from typing import Dict, Optional
+    from carconnectivity.carconnectivity import CarConnectivity
+
+LOG: logging.Logger = logging.getLogger("carconnectivity-plugin-mqtt")
+
+
+class Plugin(BasePlugin):
+    """
+    Plugin class for MQTT connectivity.
+    Args:
+        car_connectivity (CarConnectivity): An instance of CarConnectivity.
+        config (Dict): Configuration dictionary containing connection details.
+    """
+    def __init__(self, car_connectivity: CarConnectivity, config: Dict) -> None:
+        BasePlugin.__init__(self, car_connectivity, config)
+        LOG.info("Loading MQTT plugin with config %s", self.config)
+
+        self._background_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+
+        if 'broker' not in self.config or not self.config['broker']:
+            raise ValueError('No MQTT broker specified in config ("broker" missing)')
+        self.mqttbroker: str = self.config['broker']
+
+        if 'port' in self.config and self.config['port'] is not None:
+            self.mqttport: int = self.config['port']
+            if not self.mqttport or self.mqttport < 1 or self.mqttport > 65535:
+                raise ValueError('Invalid port specified in config ("port" out of range, must be 1-65535)')
+        else:
+            self.mqttport: int = 0
+
+        if 'clientid' in self.config:
+            self.mqttclientid: Optional[str] = self.config['clientid']
+        else:
+            self.mqttclientid: Optional[str] = None
+
+        if 'prefix' in self.config:
+            self.mqttprefix: Optional[str] = self.config['prefix']
+        else:
+            self.mqttprefix: Optional[str] = 'carconnectivity/0'
+
+        if 'keepalive' in self.config and self.config['keepalive'] is not None:
+            self.mqttkeepalive: int = self.config['keepalive']
+        else:
+            self.mqttkeepalive: int = 60
+
+        if 'username' in self.config:
+            self.mqttusername: Optional[str] = self.config['username']
+        else:
+            self.mqttusername: Optional[str] = None
+
+        if 'password' in self.config:
+            self.mqttpassword: Optional[str] = self.config['password']
+        else:
+            self.mqttpassword: Optional[str] = None
+
+        if self.mqttusername is None or self.mqttpassword is None:
+            if 'netrc' in self.config and self.config['netrc'] is not None:
+                netrc_file: str = self.config['netrc']
+            else:
+                netrc_file: str = os.path.join(os.path.expanduser("~"), ".netrc")
+            try:
+                secrets = netrc.netrc(file=netrc_file)
+                authenticator = secrets.authenticators(self.mqttbroker)
+                if authenticator is not None:
+                    self.mqttusername, _, self.mqttpassword = authenticator
+                else:
+                    raise ValueError(f'No credentials found for {self.mqttbroker} in netrc-file {netrc_file}')
+            except FileNotFoundError as exc:
+                raise ValueError(f'{netrc_file} netrc-file was not found. Create it or provide username and password in the config.') from exc
+
+        mqttversion_choices: list[str] = ['3.1', '3.1.1', '5']
+        if 'version' in self.config:
+            if self.config['version'] == '3.1':
+                self.mqttversion = paho.mqtt.client.MQTTv31
+            elif self.config['version'] == '3.1.1':
+                self.mqttversion = paho.mqtt.client.MQTTv311
+            elif self.config['version'] == '5':
+                self.mqttversion = paho.mqtt.client.MQTTv5
+            else:
+                raise ValueError(f'Invalid MQTT version specified in config ("version" must be one of {mqttversion_choices})')
+
+        else:
+            self.mqttversion = paho.mqtt.client.MQTTv311
+
+        transport_choices: list[str] = ['tcp', 'websockets']
+        if 'transport' in self.config:
+            self.mqtttransport: Optional[str] = self.config['transport']
+            if self.mqtttransport not in transport_choices:
+                raise ValueError(f'Invalid MQTT transport specified in config ("transport" must be one of {transport_choices})')
+        else:
+            self.mqtttransport: Optional[str] = 'tcp'
+
+        if 'tls' in self.config:
+            self.mqtttls: Optional[bool] = self.config['tls']
+            if self.mqtttls and self.mqttport == 0:
+                self.mqttport = 8883
+        else:
+            self.mqtttls: Optional[bool] = False
+            if self.mqttport == 0:
+                self.mqttport = 1883
+
+        if 'tls_insecure' in self.config:
+            self.mqtttls_insecure: Optional[bool] = self.config['tls_insecure']
+        else:
+            self.mqtttls_insecure: Optional[bool] = False
+
+        if 'tls_cafile' in self.config:
+            self.mqtttls_cafile: Optional[str] = self.config['tls_cafile']
+        else:
+            self.mqtttls_cafile: Optional[str] = None
+
+        if 'tls_certfile' in self.config:
+            self.mqtttls_certfile: Optional[str] = self.config['tls_certfile']
+        else:
+            self.mqtttls_certfile: Optional[str] = None
+
+        if 'tls_keyfile' in self.config:
+            self.mqtttls_keyfile: Optional[str] = self.config['tls_keyfile']
+        else:
+            self.mqtttls_keyfile: Optional[str] = None
+
+        mqtttls_version_choices: list[str] = ['tlsv1.2', 'tlsv1.1', 'tlsv1']
+        if 'tls_version' in self.config and self.config['tls_version'] is not None:
+            if self.config['tls_version'] == "tlsv1.2":
+                self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
+            elif self.config['tls_version'] == "tlsv1.1":
+                self.mqtttls_version = ssl.PROTOCOL_TLSv1_1
+            elif self.config['tls_version'] == "tlsv1":
+                self.mqtttls_version = ssl.PROTOCOL_TLSv1
+            else:
+                raise ValueError(f'Invalid MQTT TLS version specified in config ("tls_version" must be one of {mqtttls_version_choices})')
+        else:
+            self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
+
+        if 'ignore_for' in self.config and self.config['ignore_for-for'] is not None:
+            self.ignore_for: int = self.config['ignore_for-for']
+        else:
+            self.ignore_for: int = 5
+
+        if 'republish_on_update' in self.config and self.config['republish_on_update'] is not None:
+            self.republish_on_update: bool = self.config['republish_on_update']
+        else:
+            self.republish_on_update: bool = False
+
+        if 'topic_filter_regex' in self.config and self.config['topic_filter_regex'] is not None:
+            self.topic_filter_regex: Optional[str] = self.config['topic_filter_regex']
+        else:
+            self.topic_filter_regex: Optional[str] = None
+
+        if 'convert_timezone' in self.config and self.config['convert_timezone'] is not None:
+            self.convert_timezone: Optional[str] = self.config['convert_timezone']
+        else:
+            self.convert_timezone: Optional[str] = None
+
+        if 'time_format' in self.config and self.config['time_format'] is not None:
+            self.time_format: Optional[str] = self.config['time_format']
+        else:
+            self.time_format: Optional[str] = None
+
+        if 'locale' in self.config and self.config['locale'] is not None:
+            self.locale: Optional[str] = self.config['locale']
+            try:
+                locale.setlocale(locale.LC_ALL, self.locale)
+                if self.time_format is None or self.time_format == '':
+                    self.time_format = locale.nl_langinfo(locale.D_T_FMT)
+            except locale.Error as err:
+                raise ValueError('Invalid locale specified in config ("locale" must be a valid locale)') from err
+
+        self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
+                                                     client_id=self.mqttclientid,
+                                                     protocol=self.mqttversion,
+                                                     transport=self.mqtttransport,
+                                                     prefix=self.mqttprefix,
+                                                     ignore_for=self.ignore_for,
+                                                     republish_on_update=self.republish_on_update,
+                                                     topic_filter_regex=self.topic_filter_regex,
+                                                     convert_timezone=self.convert_timezone,
+                                                     time_format=self.time_format,
+                                                     with_raw_json_topic=False)
+        if self.mqtttls:
+            if self.mqtttls_insecure:
+                cert_required: ssl.VerifyMode = ssl.CERT_NONE
+            else:
+                cert_required: ssl.VerifyMode = ssl.CERT_REQUIRED
+
+            self.mqtt_client.tls_set(ca_certs=self.mqtttls_certfile, certfile=self.mqtttls_certfile, keyfile=self.mqtttls_keyfile, cert_reqs=cert_required,
+                                     tls_version=self.mqtttls_version)
+            if self.mqtttls_insecure:
+                self.mqtt_client.tls_insecure_set(True)
+        if self.mqttusername is not None:
+            self.mqtt_client.username_pw_set(username=self.mqttusername, password=self.mqttpassword)
+
+    def startup(self) -> None:
+        LOG.info("Starting MQTT plugin")
+        self._stop_event.clear()
+        self._background_thread = threading.Thread(target=self._background_conenct_loop, daemon=True)
+        self._background_thread.start()
+        self.mqtt_client.loop_start()
+        LOG.debug("Starting MQTT plugin done")
+
+    def _background_conenct_loop(self) -> None:
+        self._stop_event.clear()
+        while not self._stop_event.is_set():
+            try:
+                LOG.info('Connecting to MQTT-Server %s:%d', self.mqttbroker, self.mqttport)
+                self.mqtt_client.connect(self.mqttbroker, self.mqttport, self.mqttkeepalive)
+                break
+            except ConnectionRefusedError as e:
+                LOG.error('Could not connect to MQTT-Server: %s, will retry in 10 seconds', e)
+                self._stop_event.wait(10)
+
+    def shutdown(self) -> None:
+        """
+        Shuts down the connector by persisting current state, closing the session,
+        and cleaning up resources.
+
+        This method performs the following actions:
+        1. Persists the current state.
+        2. Closes the session.
+        3. Sets the session and manager to None.
+        4. Calls the shutdown method of the base connector.
+        """
+        self.mqtt_client.loop_stop()
+        self._stop_event.set()
+        if self._background_thread is not None:
+            self._background_thread.join()
+        return super().shutdown()
+
+    def get_version(self) -> str:
+        return __version__

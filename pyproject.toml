@@ -14,6 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
+    "argparse",
     "carconnectivity",
     "paho-mqtt~=2.1.0"
 ]
@@ -36,6 +37,9 @@ classifiers = [
 
 [project.urls]
 
+[project.scripts]
+carconnectivity-mqtt = "carconnectivity_mqtt.carconnectivity_mqtt_base:main"
+
 [tool.setuptools_scm]
 write_to = "src/carconnectivity_plugins/mqtt/_version.py"
 
@@ -44,4 +48,4 @@ max-line-length = 160
 ignore-patterns= "_version.py"
 
 [tool.bandit]
-targets = "carconnectivity_cli"
+targets = "carconnectivity_mqtt, carconnectivity_plugins"
