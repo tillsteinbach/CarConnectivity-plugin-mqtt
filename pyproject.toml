@@ -1,0 +1,47 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "setuptools_scm>=8"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "carconnectivity-plugin-mqtt"
+description = "CarConnectivity plugin for publishing data to MQTT"
+dynamic = ["version"]
+requires-python = ">=3.9"
+authors = [
+    { name = "Till Steinbach" }
+]
+dependencies = [
+    "carconnectivity",
+    "paho-mqtt~=2.1.0"
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+    "Topic :: System :: Monitoring",
+    "Topic :: Home Automation"
+]
+
+[project.urls]
+
+[tool.setuptools_scm]
+write_to = "src/carconnectivity_plugins/mqtt/_version.py"
+
+[tool.pylint.format]
+max-line-length = 160
+ignore-patterns= "_version.py"
+
+[tool.bandit]
+targets = "carconnectivity_cli"
