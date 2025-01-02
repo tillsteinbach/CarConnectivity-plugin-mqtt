@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 DEFAULT_LOG_LEVEL = "ERROR"
 
-LOG = logging.getLogger("carconnectivity-cli")
+LOG = logging.getLogger("carconnectivity-mqtt")
 
 
 class Formats(Enum):
@@ -108,14 +108,19 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
                     car_connectivity.shutdown()
             except json.JSONDecodeError as e:
                 LOG.critical('Could not load configuration file %s (%s)', args.config, e)
-                sys.exit(-1)
+                sys.exit('Could not load configuration file')
     except errors.AuthenticationError as e:
         LOG.critical('There was a problem when authenticating with one or multiple services: %s', e)
-        sys.exit(-1)
+        sys.exit('There was a problem when authenticating with one or multiple services')
     except errors.APICompatibilityError as e:
         LOG.critical('There was a problem when communicating with one or multiple services.'
                      ' If this problem persists please open a bug report: %s', e)
-        sys.exit(-1)
+        sys.exit('There was a problem when communicating with one or multiple services.')
     except errors.RetrievalError as e:
         LOG.critical('There was a problem when communicating with one or multiple services: %s', e)
-        sys.exit(-1)
+        sys.exit('There was a problem when communicating with one or multiple services.')
+    except errors.ConfigurationError as e:
+        LOG.critical('There was a problem with the configuration: %s', e)
+        sys.exit('There was a problem with the configuration')
+    except KeyboardInterrupt:
+        sys.exit("killed")

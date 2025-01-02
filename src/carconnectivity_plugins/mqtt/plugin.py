@@ -11,15 +11,17 @@ import ssl
 
 import paho.mqtt.client
 
+from carconnectivity.errors import ConfigurationError
+from carconnectivity.util import config_remove_credentials
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient
 from carconnectivity_plugins.mqtt._version import __version__
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional
+    from typing import Dict, Optional, Literal
     from carconnectivity.carconnectivity import CarConnectivity
 
-LOG: logging.Logger = logging.getLogger("carconnectivity-plugin-mqtt")
+LOG: logging.Logger = logging.getLogger("carconnectivity.plugins.mqtt")
 
 
 class Plugin(BasePlugin):
@@ -31,11 +33,19 @@ class Plugin(BasePlugin):
     """
     def __init__(self, car_connectivity: CarConnectivity, config: Dict) -> None:
         BasePlugin.__init__(self, car_connectivity, config)
-        LOG.info("Loading MQTT plugin with config %s", self.config)
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
+
+        # Configure logging
+        if 'log_level' in config and config['log_level'] is not None:
+            config['log_level'] = config['log_level'].upper()
+            if config['log_level'] in logging.getLevelNamesMapping():
+                LOG.setLevel(config['log_level'])
+            else:
+                raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging.getLevelNamesMapping().keys())}')
+        LOG.info("Loading mqtt plugin with config %s", config_remove_credentials(self.config))
 
         if 'broker' not in self.config or not self.config['broker']:
             raise ValueError('No MQTT broker specified in config ("broker" missing)')
@@ -102,13 +112,13 @@ class Plugin(BasePlugin):
         else:
             self.mqttversion = paho.mqtt.client.MQTTv311
 
-        transport_choices: list[str] = ['tcp', 'websockets']
+        transport_choices: list[Literal["tcp", "websockets", "unix"]] = ['tcp', 'websockets', 'unix']
         if 'transport' in self.config:
-            self.mqtttransport: Optional[str] = self.config['transport']
-            if self.mqtttransport not in transport_choices:
+            if self.config['transport'] not in transport_choices:
                 raise ValueError(f'Invalid MQTT transport specified in config ("transport" must be one of {transport_choices})')
+            self.mqtttransport: Literal["tcp", "websockets", "unix"] = self.config['transport']
         else:
-            self.mqtttransport: Optional[str] = 'tcp'
+            self.mqtttransport: Literal["tcp", "websockets", "unix"] = 'tcp'
 
         if 'tls' in self.config:
             self.mqtttls: Optional[bool] = self.config['tls']
@@ -162,6 +172,11 @@ class Plugin(BasePlugin):
         else:
             self.republish_on_update: bool = False
 
+        if 'retain_on_disconnect' in self.config and self.config['retain_on_disconnect'] is not None:
+            self.retain_on_disconnect: bool = self.config['retain_on_disconnect']
+        else:
+            self.retain_on_disconnect: bool = False
+
         if 'topic_filter_regex' in self.config and self.config['topic_filter_regex'] is not None:
             self.topic_filter_regex: Optional[str] = self.config['topic_filter_regex']
         else:
@@ -193,6 +208,7 @@ class Plugin(BasePlugin):
                                                      prefix=self.mqttprefix,
                                                      ignore_for=self.ignore_for,
                                                      republish_on_update=self.republish_on_update,
+                                                     retain_on_disconnect=self.retain_on_disconnect,
                                                      topic_filter_regex=self.topic_filter_regex,
                                                      convert_timezone=self.convert_timezone,
                                                      time_format=self.time_format,
@@ -213,12 +229,11 @@ class Plugin(BasePlugin):
     def startup(self) -> None:
         LOG.info("Starting MQTT plugin")
         self._stop_event.clear()
-        self._background_connect_thread = threading.Thread(target=self._background_connect_loop, daemon=True)
+        self._background_connect_thread = threading.Thread(target=self._background_connect_loop, daemon=False)
         self._background_connect_thread.start()
         self.mqtt_client.loop_start()
-        self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=True)
+        self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=False)
         self._background_publish_topics_thread.start()
-        
         LOG.debug("Starting MQTT plugin done")
 
     def _background_connect_loop(self) -> None:
