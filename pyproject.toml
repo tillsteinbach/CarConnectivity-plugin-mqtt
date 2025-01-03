@@ -14,7 +14,6 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "argparse",
     "carconnectivity",
     "paho-mqtt~=2.1.0"
 ]

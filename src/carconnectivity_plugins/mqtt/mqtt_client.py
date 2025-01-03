@@ -29,13 +29,14 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
     """
     MQTT client for car connectivity.
     """
-    def __init__(self, car_connectivity: CarConnectivity, client_id: Optional[str] = None,
+    def __init__(self, car_connectivity: CarConnectivity, plugin_id: str, client_id: Optional[str] = None,
                  protocol: MQTTProtocolVersion = MQTTProtocolVersion.MQTTv311,
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
                  topic_filter_regex=None, convert_timezone=None, time_format=None, with_raw_json_topic=False) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
+        self.plugin_id: str = plugin_id
         self.prefix: str = prefix or 'carconnectivity/0'
         self.has_error: Optional[bool] = None
         self.ignore_for: int = ignore_for
@@ -67,7 +68,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                      | observable.Observable.ObserverEvent.DISABLED)
         self.car_connectivity.add_observer(self._on_carconnectivity_event, flags, priority=observable.Observable.ObserverPriority.USER_MID)
 
-        self.will_set(topic=f'{self.prefix}/mqtt/connected', qos=1, retain=True, payload=False)
+        self.will_set(topic=f'{self.prefix}/plugins/{self.plugin_id}/connected', qos=1, retain=True, payload=False)
 
     def _add_topic(self, topic: str, writeable: bool = False) -> None:
         """
@@ -105,7 +106,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # Publish the list of topics if it has changed
         if self.topics_changed:
             # Topic to publish topics to
-            topicstopic = f'{self.prefix}/mqtt/topics'
+            topicstopic = f'{self.prefix}/plugins/{self.plugin_id}/topics'
             # If this topic itself is not in the list of topics, add it
             if topicstopic not in self.topics:
                 self._add_topic(topicstopic)
@@ -116,7 +117,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # Publish the list of writeable topics if it has changed
         if self.writeable_topics_changed:
             # Topic to publish writable topics to
-            writeabletopicstopic = f'{self.prefix}/mqtt/writeable_topics'
+            writeabletopicstopic = f'{self.prefix}/plugins/{self.plugin_id}/writeable_topics'
             # If this topic itself is not in the list of topics, add it
             if writeabletopicstopic not in self.topics:
                 self._add_topic(writeabletopicstopic)
@@ -136,7 +137,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             paho.mqtt.client.MQTTErrorCode: The result of the disconnect
         """
         try:
-            disconect_publish = self.publish(topic=f'{self.prefix}/mqtt/connected', qos=1, retain=True, payload=False)
+            disconect_publish = self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/connected', qos=1, retain=True, payload=False)
             disconect_publish.wait_for_publish()
         except RuntimeError:
             pass
@@ -239,11 +240,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         if code is None:
             code = CarConnectivityErrors.SUCCESS
         if code != CarConnectivityErrors.SUCCESS or message != '' or self.has_error is None or self.has_error:
-            topic = f'{self.prefix}/mqtt/error/code'
+            topic = f'{self.prefix}/plugins/{self.plugin_id}/error/code'
             self.publish(topic=topic, qos=1, retain=False, payload=code.value)
             if topic not in self.topics:
                 self._add_topic(topic)
-            topic = f'{self.prefix}/mqtt/error/message'
+            topic = f'{self.prefix}/plugins/{self.plugin_id}/error/message'
             self.publish(topic=topic, qos=1, retain=False, payload=message)
             if topic not in self.topics:
                 self._add_topic(topic)
@@ -276,7 +277,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         if reason_code == 0:
             LOG.info('Connected to MQTT broker')
             # subsribe to the force update topic
-            force_update_topic: str = f'{self.prefix}/mqtt/carconnectivityForceUpdate_writetopic'
+            force_update_topic: str = f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic'
             self.subscribe(force_update_topic, qos=2)
             if force_update_topic not in self.topics:
                 self._add_topic(force_update_topic, writeable=True)
@@ -439,12 +440,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         elif len(msg.payload) == 0:
             LOG.debug('ignoring empty message')
         # handle force upate message
-        elif msg.topic == f'{self.prefix}/mqtt/carconnectivityForceUpdate_writetopic':
+        elif msg.topic == f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic':
             if msg.payload.lower() == b'True'.lower():
                 LOG.info('Update triggered by MQTT message')
-                self.publish(topic=f'{self.prefix}/mqtt/carconnectivityForceUpdate', qos=2, payload=True)
+                self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=True)
                 self.car_connectivity.fetch_all()
-                self.publish(topic=f'{self.prefix}/mqtt/carconnectivityForceUpdate', qos=2, payload=False)
+                self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=False)
         # handle any other message
         else:
             if msg.topic.startswith(self.prefix):

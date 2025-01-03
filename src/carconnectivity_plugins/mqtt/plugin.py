@@ -31,8 +31,8 @@ class Plugin(BasePlugin):
         car_connectivity (CarConnectivity): An instance of CarConnectivity.
         config (Dict): Configuration dictionary containing connection details.
     """
-    def __init__(self, car_connectivity: CarConnectivity, config: Dict) -> None:
-        BasePlugin.__init__(self, car_connectivity, config)
+    def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
+        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config)
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
@@ -43,6 +43,7 @@ class Plugin(BasePlugin):
             config['log_level'] = config['log_level'].upper()
             if config['log_level'] in logging.getLevelNamesMapping():
                 LOG.setLevel(config['log_level'])
+                self.log_level._set_value(config['log_level'])  # pylint: disable=protected-access
             else:
                 raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging.getLevelNamesMapping().keys())}')
         LOG.info("Loading mqtt plugin with config %s", config_remove_credentials(self.config))
@@ -202,6 +203,7 @@ class Plugin(BasePlugin):
                 raise ValueError('Invalid locale specified in config ("locale" must be a valid locale)') from err
 
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
+                                                     plugin_id=plugin_id,
                                                      client_id=self.mqttclientid,
                                                      protocol=self.mqttversion,
                                                      transport=self.mqtttransport,
