@@ -183,10 +183,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
         elif (flags & observable.Observable.ObserverEvent.VALUE_CHANGED) \
                 or (self.republish_on_update and (flags & observable.Observable.ObserverEvent.UPDATED)):
-            converted_value = self.convert_value(element.value)
-            LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
-            # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
-            self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload=converted_value)
+            if element.enabled:
+                converted_value = self.convert_value(element.value)
+                LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
+                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
+                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload=converted_value)
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
         elif flags & observable.Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
                 and isinstance(element, attributes.GenericAttribute):

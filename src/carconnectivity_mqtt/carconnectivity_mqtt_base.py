@@ -99,6 +99,7 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
             try:
                 config_dict = json.load(config_file)
                 car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile, cache_file=args.cachefile)
+                car_connectivity.startup()
                 try:
                     while True:
                         time.sleep(1)
