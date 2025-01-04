@@ -9,6 +9,8 @@ on:
 jobs:
   dockerHubDescription:
     runs-on: ubuntu-latest
+    environment: 
+      name: dockerhub
     steps:
     - uses: actions/checkout@v4
 
