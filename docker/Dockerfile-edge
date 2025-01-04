@@ -33,5 +33,6 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
     && pip install carconnectivity-connector-volkswagen carconnectivity-connector-skoda \
     && apk del build-dependencies
 
+SHELL ["/bin/sh", "-c"]
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["carconnectivity-mqtt", "${CONFIG_FILE}", "${ADDITIONAL_PARAMETERS}"]
+CMD carconnectivity-mqtt ${CONFIG_FILE ${ADDITIONAL_PARAMETERS}
