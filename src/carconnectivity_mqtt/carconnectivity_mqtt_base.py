@@ -97,21 +97,25 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
             handler.addFilter(util.DuplicateFilter())
 
     try:  # pylint: disable=too-many-nested-blocks
-        with open(file=args.config, mode='r', encoding='utf-8') as config_file:
-            try:
-                config_dict = json.loads(json_minify(config_file.read(), strip_space=False))
-                car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile, cache_file=args.cachefile)
-                car_connectivity.startup()
+        try:
+            with open(file=args.config, mode='r', encoding='utf-8') as config_file:
                 try:
-                    while True:
-                        time.sleep(1)
-                except KeyboardInterrupt:
-                    LOG.info('Keyboard interrupt received, shutting down...')
+                    config_dict = json.loads(json_minify(config_file.read(), strip_space=False))
+                    car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile, cache_file=args.cachefile)
+                    car_connectivity.startup()
+                    try:
+                        while True:
+                            time.sleep(1)
+                    except KeyboardInterrupt:
+                        LOG.info('Keyboard interrupt received, shutting down...')
 
-                    car_connectivity.shutdown()
-            except json.JSONDecodeError as e:
-                LOG.critical('Could not load configuration file %s (%s)', args.config, e)
-                sys.exit('Could not load configuration file')
+                        car_connectivity.shutdown()
+                except json.JSONDecodeError as e:
+                    LOG.critical('Could not load configuration file %s (%s)', args.config, e)
+                    sys.exit('Could not load configuration file')
+        except FileNotFoundError as e:
+            LOG.critical('Could not find configuration file %s (%s)', args.config, e)
+            sys.exit('Could not find configuration file')
     except errors.AuthenticationError as e:
         LOG.critical('There was a problem when authenticating with one or multiple services: %s', e)
         sys.exit('There was a problem when authenticating with one or multiple services')
