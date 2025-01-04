@@ -9,9 +9,6 @@ ENV ADDITIONAL_PARAMETERS=
 ENV TZ=
 ENV MUSL_LOCPATH="/usr/share/i18n/locales/musl"
 
-COPY . carconnectivity-mqtt
-WORKDIR ./carconnectivity-mqtt/
-
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -35,4 +32,4 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
     && apk del build-dependencies
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD carconnectivity-mqtt ${CONFIG_FILE} ${ADDITIONAL_PARAMETERS}
+CMD ["carconnectivity-mqtt" "${CONFIG_FILE}" "${ADDITIONAL_PARAMETERS}"]
