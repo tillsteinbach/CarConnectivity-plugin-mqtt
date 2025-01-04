@@ -14,7 +14,7 @@ import json
 from carconnectivity import carconnectivity, errors, util
 from carconnectivity._version import __version__ as __carconnectivity_version__
 
-from carconnectivity_cli._version import __version__
+from carconnectivity_plugins.mqtt._version import __version__
 
 if TYPE_CHECKING:
     pass
