@@ -1,4 +1,4 @@
-FROM python:3.13.0-alpine as base
+FROM python:3.13.0-alpine AS base
 RUN apk add --update tzdata
 
 FROM python:3.13.0-alpine
@@ -35,4 +35,4 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
     && apk del build-dependencies
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD carconnectivity-mqtt ${CONFIG_FILE} ${ADDITIONAL_PARAMETERS}
+CMD [carconnectivity-mqtt ${CONFIG_FILE} ${ADDITIONAL_PARAMETERS}
