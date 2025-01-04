@@ -19,8 +19,7 @@ If you want to integrate data from your car, a standard protocol such as [MQTT](
 ## How to install
 ### Create config file
 Create a carconnectivity.json config file like this (Example if you have a Volkswagen and a MySkoda account)
-```json
-"carconnectivity-mqtt/carconnectivity.json" 52L, 1620B                                                                                1,1           All
+```json                                                                           1,1           All
 {
     "carConnectivity": {
         "log_level": "error", // set the global log level, you can set individual log levels in the connectors and plugins
