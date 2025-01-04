@@ -11,6 +11,8 @@ import tempfile
 import time
 import json
 
+from json_minify import json_minify
+
 from carconnectivity import carconnectivity, errors, util
 from carconnectivity._version import __version__ as __carconnectivity_version__
 
@@ -97,7 +99,7 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
     try:  # pylint: disable=too-many-nested-blocks
         with open(file=args.config, mode='r', encoding='utf-8') as config_file:
             try:
-                config_dict = json.load(config_file)
+                config_dict = json.loads(json_minify(config_file.read(), strip_space=False))
                 car_connectivity = carconnectivity.CarConnectivity(config=config_dict, tokenstore_file=args.tokenfile, cache_file=args.cachefile)
                 car_connectivity.startup()
                 try:
