@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the docker-compose stack
-      run: docker-compose -f docker/test/${{ matrix.compose-file }} up -d
+      run: docker compose -f docker/test/${{ matrix.compose-file }} up -d
     - name: Container Status
       run: docker ps -a
     - name: Let containers run for 60s
