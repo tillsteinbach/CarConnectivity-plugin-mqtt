@@ -7,7 +7,7 @@
                 "type": "mqtt",
                 "disabled": false,
                 "config": {
-                    "log_level": "warning",
+                    "log_level": "info",
                     "broker": "mosquitto",
                     "username": "testuser",
                     "password": "testuser"
