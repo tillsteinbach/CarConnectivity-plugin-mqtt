@@ -30,8 +30,8 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
                           musl-locales \
                           musl-locales-lang \
     && pip install --no-cache-dir ./carconnectivity-mqtt \
-    && pip install --pre carconnectivity-connector-volkswagen \
-    && pip install --pre carconnectivity-connector-skoda \
+    && pip install carconnectivity-connector-volkswagen \
+    && pip install carconnectivity-connector-skoda \
     && apk del build-dependencies
 
 SHELL ["/bin/sh", "-c"]
