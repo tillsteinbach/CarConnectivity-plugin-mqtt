@@ -264,6 +264,7 @@ class Plugin(BasePlugin):
         3. Sets the session and manager to None.
         4. Calls the shutdown method of the base connector.
         """
+        self.mqtt_client.disconnect()
         self.mqtt_client.loop_stop()
         self._stop_event.set()
         if self._background_connect_thread is not None:
