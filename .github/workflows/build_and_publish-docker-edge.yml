@@ -8,6 +8,7 @@ on:
      - docker/Dockerfile-edge
      - src/**
      - 'pyproject.toml'
+  workflow_dispatch:
 
 jobs:
   docker-deploy:
