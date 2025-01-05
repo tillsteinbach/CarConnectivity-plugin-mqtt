@@ -19,7 +19,7 @@ If you want to integrate data from your car, a standard protocol such as [MQTT](
 ## How to install
 ### Create config file
 Create a carconnectivity.json config file like this (Example if you have a Volkswagen and a MySkoda account)
-```json                                                                           1,1           All
+```json
 {
     "carConnectivity": {
         "log_level": "error", // set the global log level, you can set individual log levels in the connectors and plugins
@@ -53,8 +53,8 @@ Create a carconnectivity.json config file like this (Example if you have a Volks
         ]
     }
 }
-
 ```
+
 ### Using docker-compose
 When using docker-compose configure CarConnectivity-MQTT like that:
 ```yml
