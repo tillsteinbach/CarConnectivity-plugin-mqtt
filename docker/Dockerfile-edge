@@ -19,6 +19,8 @@ COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 # Pillow depenencies
 RUN apk --no-cache add --virtual build-dependencies build-base \
     && apk --no-cache add git \
+                          openssl-dev \
+                          musl-dev \
                           rust \
                           cargo \
                           libffi-dev \
