@@ -9,7 +9,7 @@ ENV ADDITIONAL_PARAMETERS=
 ENV TZ=
 ENV MUSL_LOCPATH="/usr/share/i18n/locales/musl"
 
-COPY . carconnectivity-mqtt
+
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
@@ -18,8 +18,7 @@ RUN chmod +x /entrypoint.sh
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 # Pillow depenencies
 RUN apk --no-cache add --virtual build-dependencies build-base \
-    && apk --no-cache add git \
-                          jpeg-dev \
+    && apk --no-cache add jpeg-dev \
                           zlib-dev \
                           freetype-dev \
                           lcms2-dev \
@@ -29,9 +28,9 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
                           tcl-dev \
                           musl-locales \
                           musl-locales-lang \
-    && pip install --no-cache-dir ./carconnectivity-mqtt \
-    && pip install --pre carconnectivity-connector-volkswagen \
-    && pip install --pre carconnectivity-connector-skoda \
+    && pip install carconnectivity-plugin-mqtt==${VERSION} \
+    && pip install carconnectivity-connector-volkswagen \
+    && pip install carconnectivity-connector-skoda \
     && apk del build-dependencies
 
 SHELL ["/bin/sh", "-c"]
