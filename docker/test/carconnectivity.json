@@ -1,0 +1,18 @@
+{
+    "carConnectivity": {
+        "log_level": "info", // set loglevel
+        "connectors": [],
+        "plugins": [
+            {
+                "type": "mqtt",
+                "disabled": false,
+                "config": {
+                    "log_level": "warning",
+                    "broker": "mosquitto",
+                    "username": "testuser",
+                    "password": "testuser"
+                }
+            }
+        ]
+    }
+}
