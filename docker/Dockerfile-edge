@@ -16,13 +16,13 @@ RUN chmod +x /entrypoint.sh
 
 # Copy zoneinfo
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
-# Pillow depenencies
-RUN apk --no-cache add --virtual build-dependencies build-base \
-    && apk --no-cache add git \
-                          openssl-dev \
-                          musl-dev \
-                          rust \
-                          cargo \
+
+RUN apk --no-cache add --virtual build-dependencies git \
+                                                    build-base \
+                                                    musl-dev \
+                                                    rust \
+                                                    cargo \
+    && apk --no-cache add openssl-dev \
                           libffi-dev \
                           jpeg-dev \
                           zlib-dev \
