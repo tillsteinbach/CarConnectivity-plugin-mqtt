@@ -19,6 +19,7 @@ COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 # Pillow depenencies
 RUN apk --no-cache add --virtual build-dependencies build-base \
     && apk --no-cache add git \
+                          libffi-dev \
                           jpeg-dev \
                           zlib-dev \
                           freetype-dev \
@@ -30,8 +31,8 @@ RUN apk --no-cache add --virtual build-dependencies build-base \
                           musl-locales \
                           musl-locales-lang \
     && pip install --no-cache-dir ./carconnectivity-mqtt \
-    && pip install carconnectivity-connector-volkswagen \
-    && pip install carconnectivity-connector-skoda \
+    && pip install --pre carconnectivity-connector-volkswagen \
+    && pip install --pre carconnectivity-connector-skoda \
     && apk del build-dependencies
 
 SHELL ["/bin/sh", "-c"]
