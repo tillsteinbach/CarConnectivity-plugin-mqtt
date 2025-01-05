@@ -5,7 +5,7 @@ services:
     depends_on:
       - mosquitto
     volumes:
-      - docker/test/carconnectivity.json:/carconnectivity.json
+      - ./docker/test/carconnectivity.json:/carconnectivity.json
 
   mosquitto:
     image: eclipse-mosquitto
