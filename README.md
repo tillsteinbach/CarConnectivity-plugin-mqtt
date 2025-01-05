@@ -32,7 +32,7 @@ pip3 install carconnectivity-connector-skoda
 ```
 
 ### Create config file
-Create a carconnectivity.json config file like this (Example if you have a Volkswagen and a MySkoda account)
+Create a carconnectivity.json config file like this (Example if you have a Volkswagen and a MySkoda account). A documentation of all possible config options can be found [here](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/tree/main/doc/Config.md).
 ```json
 {
     "carConnectivity": {
