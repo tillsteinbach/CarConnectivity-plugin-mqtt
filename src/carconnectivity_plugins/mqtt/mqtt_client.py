@@ -6,6 +6,8 @@ import logging
 
 from enum import Enum
 from datetime import datetime, timedelta, tzinfo
+import json
+
 
 from paho.mqtt.client import Client
 from paho.mqtt.reasoncodes import ReasonCode
@@ -14,15 +16,22 @@ from paho.mqtt.enums import MQTTProtocolVersion, CallbackAPIVersion, MQTTErrorCo
 
 from carconnectivity import errors
 from carconnectivity import attributes
-from carconnectivity import observable
+from carconnectivity.observable import Observable
+from carconnectivity.util import ExtendedWithNullEncoder
 
 if TYPE_CHECKING:
-    from typing import Optional, Literal, List
+    from typing import Optional, Literal, List, Dict, Any, Set
 
     from carconnectivity.carconnectivity import CarConnectivity
 
 
 LOG = logging.getLogger("carconnectivity.plugins.mqtt")
+
+
+class TopicFormat(Enum):
+    SIMPLE = 'simple'
+    EXTENDED = 'extended'
+    JSON = 'json'
 
 
 class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-attributes
@@ -33,7 +42,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  protocol: MQTTProtocolVersion = MQTTProtocolVersion.MQTTv311,
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
-                 topic_filter_regex=None, convert_timezone=None, time_format=None, with_raw_json_topic=False) -> None:
+                 topic_filter_regex=None, convert_timezone=None, time_format=None, with_raw_json_topic=False,
+                 topic_format: TopicFormat = TopicFormat.SIMPLE) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
         self.plugin_id: str = plugin_id
@@ -52,6 +62,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.time_format: Optional[str] = time_format
         self.has_changes = False
         self.with_raw_json_topic = with_raw_json_topic
+        self.topic_format = topic_format
 
         self.on_connect = self._on_connect_callback
         self.on_message = self._on_message_callback
@@ -59,18 +70,18 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.on_subscribe = self._on_subscribe_callback
 
         if self.republish_on_update:
-            flags = (observable.Observable.ObserverEvent.UPDATED
-                     | observable.Observable.ObserverEvent.ENABLED
-                     | observable.Observable.ObserverEvent.DISABLED)
+            flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
+                                               | Observable.ObserverEvent.ENABLED
+                                               | Observable.ObserverEvent.DISABLED)
         else:
-            flags = (observable.Observable.ObserverEvent.VALUE_CHANGED
-                     | observable.Observable.ObserverEvent.ENABLED
-                     | observable.Observable.ObserverEvent.DISABLED)
-        self.car_connectivity.add_observer(self._on_carconnectivity_event, flags, priority=observable.Observable.ObserverPriority.USER_MID)
+            flags = (Observable.ObserverEvent.VALUE_CHANGED
+                     | Observable.ObserverEvent.ENABLED
+                     | Observable.ObserverEvent.DISABLED)
+        self.car_connectivity.add_observer(self._on_carconnectivity_event, flags, priority=Observable.ObserverPriority.USER_MID)
 
         self.will_set(topic=f'{self.prefix}/plugins/{self.plugin_id}/connected', qos=1, retain=True, payload=False)
 
-    def _add_topic(self, topic: str, writeable: bool = False) -> None:
+    def _add_topic(self, topic: str, with_filter: bool = True, subscribe: bool = True, writeable: bool = False) -> None:
         """
         Add a topic to the list of topics and writeable topics.
 
@@ -81,16 +92,40 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        if writeable:
-            if topic not in self.writeable_topics:
-                self.writeable_topics.append(topic)
-                self.writeable_topics.sort()
-                self.writeable_topics_changed = True
+        topics: Set[str] = set()
+        if self.topic_format == TopicFormat.SIMPLE:
+            if writeable:
+                topics.add(topic+'_writetopic')
+            else:
+                topics.add(topic)
+        elif self.topic_format == TopicFormat.JSON:
+            if writeable:
+                topics.add(topic+'_json_writetopic')
+            else:
+                topics.add(topic+'_json')
         else:
-            if topic not in self.topics:
-                self.topics.append(topic)
-                self.topics.sort()
-                self.topics_changed = True
+            raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
+        if with_filter and self.topic_filter_regex is not None:
+            filtered_topics: Set[str] = set()
+            for adjusted_topic in topics:
+                if not self.topic_filter_regex.match(adjusted_topic):
+                    filtered_topics.add(adjusted_topic)
+            topics = filtered_topics
+        if writeable:
+            for adjusted_topic in topics:
+                if adjusted_topic not in self.writeable_topics:
+                    self.writeable_topics.append(adjusted_topic)
+                    self.writeable_topics.sort()
+                    self.writeable_topics_changed = True
+        else:
+            for adjusted_topic in topics:
+                if adjusted_topic not in self.topics:
+                    self.topics.append(adjusted_topic)
+                    self.topics.sort()
+                    self.topics_changed = True
+        if subscribe:
+            for adjusted_topic in topics:
+                self.subscribe(adjusted_topic, qos=1)
 
     def publish_topics(self) -> None:
         """
@@ -143,6 +178,26 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             pass
         return super().disconnect(reasoncode, properties)
 
+    def _publish_element(self, element: Any) -> None:
+        if element.enabled:
+            converted_value = self.convert_value(element.value)
+            LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
+            if self.topic_format == TopicFormat.SIMPLE:
+                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
+                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload=converted_value)
+            elif self.topic_format == TopicFormat.JSON:
+                result_dict: Dict[str, Any] = {}
+                result_dict['val'] = converted_value
+                if element.last_updated is not None:
+                    result_dict['upd'] = element.last_updated
+                if element.unit is not None:
+                    result_dict['uni'] = element.unit
+                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
+                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True,
+                             payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
+            else:
+                raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
+
     def _on_carconnectivity_event(self, element, flags) -> None:
         """
         Callback for car connectivity events.
@@ -162,37 +217,29 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             None
         """
         self.has_changes = True
-        topic = f'{self.prefix}{element.get_absolute_path()}'
-        # Skip topics that are filtered
-        if self.topic_filter_regex is not None and self.topic_filter_regex.match(topic):
-            return
-
+        topic: str = f'{self.prefix}{element.get_absolute_path()}'
         # An attribute is enabled
-        if flags & observable.Observable.ObserverEvent.ENABLED:
+        if flags & Observable.ObserverEvent.ENABLED:
             # For ChangeableAttributes, subscribe to the topic and add it to the list of writeable topics
             if isinstance(element, attributes.ChangeableAttribute):
-                topic = topic + '_writetopic'
-                LOG.debug('Subscribe for attribute %s%s', self.prefix, element.get_absolute_path())
-                self.subscribe(topic, qos=1)
-                if topic not in self.topics:
-                    self._add_topic(topic, writeable=True)
+                self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
             # For GenericAttributes, add it to the list of topics
             elif isinstance(element, attributes.GenericAttribute):
-                if topic not in self.topics:
-                    self._add_topic(topic)
+                self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=False)
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
-        elif (flags & observable.Observable.ObserverEvent.VALUE_CHANGED) \
-                or (self.republish_on_update and (flags & observable.Observable.ObserverEvent.UPDATED)):
-            if element.enabled:
-                converted_value = self.convert_value(element.value)
-                LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
-                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
-                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload=converted_value)
+        elif (flags & Observable.ObserverEvent.VALUE_CHANGED) \
+                or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED)):
+            self._publish_element(element)
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
-        elif flags & observable.Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
+        elif flags & Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
                 and isinstance(element, attributes.GenericAttribute):
             LOG.debug('%s%s, value is diabled', self.prefix, element.get_absolute_path())
-            self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload='')
+            if self.topic_format == TopicFormat.SIMPLE:
+                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload='')
+            elif self.topic_format == TopicFormat.JSON:
+                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True, payload='')
+            else:
+                raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
 
     def convert_value(self, value):
         """
@@ -297,19 +344,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                         continue
                     # if attribute is changeable, subscribe to it and add it to the list of writeable topics
                     if isinstance(attribute, attributes.ChangeableAttribute):
-                        LOG.debug('Subscribe for attribute %s%s', self.prefix, attribute.get_absolute_path())
-                        self.subscribe(attribute_topic, qos=1)
-                        if attribute_topic not in self.topics:
-                            self._add_topic(attribute_topic, writeable=True)
+                        self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=True)
                     # if attribute is not writeable, add it to the list of topics
                     elif isinstance(attributes, attributes.GenericAttribute):
-                        if attribute_topic not in self.topics:
-                            self._add_topic(attribute_topic)
+                        self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=False)
                     # if attribute has a value, publish it
                     if attribute.value is not None:
-                        converted_value = self.convert_value(attribute.value)
-                        # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
-                        self.publish(topic=attribute_topic, qos=1, retain=True, payload=converted_value)
+                        self._publish_element(attribute)
         # Handle different reason codes
         elif reason_code == 128:
             LOG.error('Could not connect (%s): Unspecified error', reason_code)

@@ -14,7 +14,7 @@ import paho.mqtt.client
 from carconnectivity.errors import ConfigurationError
 from carconnectivity.util import config_remove_credentials
 from carconnectivity_plugins.base.plugin import BasePlugin
-from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient
+from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient, TopicFormat
 from carconnectivity_plugins.mqtt._version import __version__
 
 if TYPE_CHECKING:
@@ -48,14 +48,21 @@ class Plugin(BasePlugin):
                 raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging.getLevelNamesMapping().keys())}')
         LOG.info("Loading mqtt plugin with config %s", config_remove_credentials(self.config))
 
+        if 'topic_format' in self.config and self.config['topic_format'] is not None:
+            if self.config['topic_format'].lower() not in [e.value for e in TopicFormat]:
+                raise ConfigurationError(f'Invalid topic format ("topic_format" must be one of {[e.value for e in TopicFormat]})')
+            self.topic_format: TopicFormat = TopicFormat(self.config['topic_format'].lower())
+        else:
+            self.topic_format: TopicFormat = TopicFormat.SIMPLE
+
         if 'broker' not in self.config or not self.config['broker']:
-            raise ValueError('No MQTT broker specified in config ("broker" missing)')
+            raise ConfigurationError('No MQTT broker specified in config ("broker" missing)')
         self.mqttbroker: str = self.config['broker']
 
         if 'port' in self.config and self.config['port'] is not None:
             self.mqttport: int = self.config['port']
             if not self.mqttport or self.mqttport < 1 or self.mqttport > 65535:
-                raise ValueError('Invalid port specified in config ("port" out of range, must be 1-65535)')
+                raise ConfigurationError('Invalid port specified in config ("port" out of range, must be 1-65535)')
         else:
             self.mqttport: int = 0
 
@@ -95,9 +102,9 @@ class Plugin(BasePlugin):
                 if authenticator is not None:
                     self.mqttusername, _, self.mqttpassword = authenticator
                 else:
-                    raise ValueError(f'No credentials found for {self.mqttbroker} in netrc-file {netrc_file}')
+                    raise ConfigurationError(f'No credentials found for {self.mqttbroker} in netrc-file {netrc_file}')
             except FileNotFoundError as exc:
-                raise ValueError(f'{netrc_file} netrc-file was not found. Create it or provide username and password in the config.') from exc
+                raise ConfigurationError(f'{netrc_file} netrc-file was not found. Create it or provide username and password in the config.') from exc
 
         mqttversion_choices: list[str] = ['3.1', '3.1.1', '5']
         if 'version' in self.config:
@@ -108,7 +115,7 @@ class Plugin(BasePlugin):
             elif self.config['version'] == '5':
                 self.mqttversion = paho.mqtt.client.MQTTv5
             else:
-                raise ValueError(f'Invalid MQTT version specified in config ("version" must be one of {mqttversion_choices})')
+                raise ConfigurationError(f'Invalid MQTT version specified in config ("version" must be one of {mqttversion_choices})')
 
         else:
             self.mqttversion = paho.mqtt.client.MQTTv311
@@ -116,7 +123,7 @@ class Plugin(BasePlugin):
         transport_choices: list[Literal["tcp", "websockets", "unix"]] = ['tcp', 'websockets', 'unix']
         if 'transport' in self.config:
             if self.config['transport'] not in transport_choices:
-                raise ValueError(f'Invalid MQTT transport specified in config ("transport" must be one of {transport_choices})')
+                raise ConfigurationError(f'Invalid MQTT transport specified in config ("transport" must be one of {transport_choices})')
             self.mqtttransport: Literal["tcp", "websockets", "unix"] = self.config['transport']
         else:
             self.mqtttransport: Literal["tcp", "websockets", "unix"] = 'tcp'
@@ -159,7 +166,7 @@ class Plugin(BasePlugin):
             elif self.config['tls_version'] == "tlsv1":
                 self.mqtttls_version = ssl.PROTOCOL_TLSv1
             else:
-                raise ValueError(f'Invalid MQTT TLS version specified in config ("tls_version" must be one of {mqtttls_version_choices})')
+                raise ConfigurationError(f'Invalid MQTT TLS version specified in config ("tls_version" must be one of {mqtttls_version_choices})')
         else:
             self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
 
@@ -200,7 +207,7 @@ class Plugin(BasePlugin):
                 if self.time_format is None or self.time_format == '':
                     self.time_format = locale.nl_langinfo(locale.D_T_FMT)
             except locale.Error as err:
-                raise ValueError('Invalid locale specified in config ("locale" must be a valid locale)') from err
+                raise ConfigurationError('Invalid locale specified in config ("locale" must be a valid locale)') from err
 
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
                                                      plugin_id=plugin_id,
@@ -214,7 +221,8 @@ class Plugin(BasePlugin):
                                                      topic_filter_regex=self.topic_filter_regex,
                                                      convert_timezone=self.convert_timezone,
                                                      time_format=self.time_format,
-                                                     with_raw_json_topic=False)
+                                                     with_raw_json_topic=False,
+                                                     topic_format=self.topic_format)
         if self.mqtttls:
             if self.mqtttls_insecure:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE
