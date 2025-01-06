@@ -144,7 +144,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             topicstopic = f'{self.prefix}/plugins/{self.plugin_id}/topics'
             # If this topic itself is not in the list of topics, add it
             if topicstopic not in self.topics:
-                self._add_topic(topicstopic)
+                self._add_topic(topic=topicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.topics)
             self.publish(topic=topicstopic, qos=1, retain=True, payload=content)
             self.topics_changed = False
@@ -155,7 +155,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             writeabletopicstopic = f'{self.prefix}/plugins/{self.plugin_id}/writeable_topics'
             # If this topic itself is not in the list of topics, add it
             if writeabletopicstopic not in self.topics:
-                self._add_topic(writeabletopicstopic)
+                self._add_topic(topic=writeabletopicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.writeable_topics)
             self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content)
             self.writeable_topics_changed = False
@@ -291,11 +291,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             topic = f'{self.prefix}/plugins/{self.plugin_id}/error/code'
             self.publish(topic=topic, qos=1, retain=False, payload=code.value)
             if topic not in self.topics:
-                self._add_topic(topic)
+                self._add_topic(topic=topic, with_filter=True, writeable=False, subscribe=False)
             topic = f'{self.prefix}/plugins/{self.plugin_id}/error/message'
             self.publish(topic=topic, qos=1, retain=False, payload=message)
             if topic not in self.topics:
-                self._add_topic(topic)
+                self._add_topic(topic=topic, with_filter=True, writeable=False, subscribe=False)
         if code != CarConnectivityErrors.SUCCESS:
             self.has_error = True
         else:
@@ -328,7 +328,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             force_update_topic: str = f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic'
             self.subscribe(force_update_topic, qos=2)
             if force_update_topic not in self.topics:
-                self._add_topic(force_update_topic, writeable=True)
+                self._add_topic(topic=force_update_topic, with_filter=True, writeable=True, subscribe=False)
 
             # Subscribe again to all writeable topics after a reconnect
             for writeable_topic in self.writeable_topics:
