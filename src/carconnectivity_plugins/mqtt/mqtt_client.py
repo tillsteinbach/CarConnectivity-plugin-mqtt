@@ -225,7 +225,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
             # For GenericAttributes, add it to the list of topics
             elif isinstance(element, attributes.GenericAttribute):
-                self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=False)
+                self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
         elif (flags & Observable.ObserverEvent.VALUE_CHANGED) \
                 or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED)):
@@ -347,7 +347,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                         self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=True)
                     # if attribute is not writeable, add it to the list of topics
                     elif isinstance(attributes, attributes.GenericAttribute):
-                        self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=False)
+                        self._add_topic(attribute_topic, with_filter=True, subscribe=False, writeable=False)
                     # if attribute has a value, publish it
                     if attribute.value is not None:
                         self._publish_element(attribute)
