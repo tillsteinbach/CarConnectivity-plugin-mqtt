@@ -16,7 +16,8 @@ authors = [
 dependencies = [
     "carconnectivity",
     "paho-mqtt~=2.1.0",
-    "JSON_minify~=0.3.0"
+    "JSON_minify~=0.3.0",
+    "python-dateutil~=2.9.0"
 ]
 readme = "README.md"
 license = { file = "LICENSE" }

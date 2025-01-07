@@ -8,6 +8,8 @@ import logging
 import netrc
 import locale
 import ssl
+from datetime import datetime, tzinfo
+from dateutil import tz
 
 import paho.mqtt.client
 
@@ -191,9 +193,9 @@ class Plugin(BasePlugin):
             self.topic_filter_regex: Optional[str] = None
 
         if 'convert_timezone' in self.config and self.config['convert_timezone'] is not None:
-            self.convert_timezone: Optional[str] = self.config['convert_timezone']
+            self.convert_timezone: Optional[tzinfo] = tz.gettz(self.config['convert_timezone'])
         else:
-            self.convert_timezone: Optional[str] = None
+            self.convert_timezone: Optional[tzinfo] = datetime.now().astimezone().tzinfo
 
         if 'time_format' in self.config and self.config['time_format'] is not None:
             self.time_format: Optional[str] = self.config['time_format']

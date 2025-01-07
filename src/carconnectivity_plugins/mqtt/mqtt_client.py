@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import logging
 
 from enum import Enum
-from datetime import datetime, timedelta, tzinfo
+from datetime import datetime, timedelta, tzinfo, timezone
 import json
 
 
@@ -42,7 +42,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  protocol: MQTTProtocolVersion = MQTTProtocolVersion.MQTTv311,
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
-                 topic_filter_regex=None, convert_timezone=None, time_format=None, with_raw_json_topic=False,
+                 topic_filter_regex=None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
                  topic_format: TopicFormat = TopicFormat.SIMPLE) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
@@ -189,7 +189,15 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 result_dict: Dict[str, Any] = {}
                 result_dict['val'] = converted_value
                 if element.last_updated is not None:
-                    result_dict['upd'] = element.last_updated
+                    if self.convert_timezone is not None:
+                        converted_time: datetime = element.last_updated.astimezone(self.convert_timezone)
+                    else:
+                        converted_time: datetime = element.last_updated
+                    if self.time_format is not None:
+                        converted_time_str: str = converted_time.strftime(self.time_format)
+                    else:
+                        converted_time_str = str(converted_time)
+                    result_dict['upd'] = converted_time_str
                 if element.unit is not None:
                     result_dict['uni'] = element.unit
                 # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
@@ -444,7 +452,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         del obj  # unused
         del properties  # unused
         if any(x in [0, 1, 2] for x in reason_codes):
-            self.last_subscribe = datetime.now()
+            self.last_subscribe = datetime.now(tz=timezone.utc)
             LOG.debug('sucessfully subscribed to topic of id %d', mid)
         else:
             LOG.error('Subscribe was not successfull (%s)', ', '.join(reason_codes))
@@ -476,7 +484,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         del mqttc  # unused
         del obj  # unused
         # Ignore messages that are within the ignore_for delta of the last subscribe if ignore_for is set
-        if self.ignore_for > 0 and self.last_subscribe is not None and (datetime.now() - self.last_subscribe) < timedelta(seconds=self.ignore_for):
+        if self.ignore_for > 0 and self.last_subscribe is not None and (datetime.now(timezone.utc) - self.last_subscribe) < timedelta(seconds=self.ignore_for):
             LOG.info('ignoring message from broker as it is within "ignore-for" delta of %ds', self.ignore_for)
         # Ignore empty messages
         elif len(msg.payload) == 0:
