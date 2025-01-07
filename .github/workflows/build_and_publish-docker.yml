@@ -41,7 +41,8 @@ jobs:
             tillsteinbach/carconnectivity-mqtt
             ghcr.io/tillsteinbach/carconnectivity-mqtt
           tags: |
-            type=edge
+            type=raw,value=edge
+            type=pep440,pattern={{version}}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.2.0
       - name: Setup Docker Buildx
@@ -50,9 +51,9 @@ jobs:
         id: docker_build
         uses: docker/build-push-action@v6.7.0
         with:
-          context: .
+          context: docker
           file: docker/Dockerfile
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
