@@ -18,7 +18,9 @@ RUN chmod +x /entrypoint.sh
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 # Pillow depenencies
 RUN apk --no-cache add --virtual build-dependencies build-base \
-    && apk --no-cache add jpeg-dev \
+    && apk --no-cache add openssl-dev \
+                          libffi-dev \
+                          jpeg-dev \
                           zlib-dev \
                           freetype-dev \
                           lcms2-dev \
