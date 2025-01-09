@@ -47,6 +47,11 @@ jobs:
         uses: docker/setup-qemu-action@v3.2.0
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3.8.0
+      - name: Wait for PIPY to have the version available
+        run: |
+          pip3 download carconnectivity-plugin-mqtt==${{ steps.meta.outputs.labels }} > /dev/null
+          while [ $? -ne 0 ]; do sleep 10; pip3 download carconnectivity-plugin-mqtt==${{ steps.meta.outputs.labels }}; done
+        shell: bash {0}
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v6.10.0
