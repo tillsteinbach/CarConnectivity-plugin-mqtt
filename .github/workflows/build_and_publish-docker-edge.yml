@@ -22,7 +22,6 @@ jobs:
       matrix:
         platform:
           - linux/amd64
-          - linux/arm64
     environment: 
       name: dockerhub
     permissions:
@@ -91,6 +90,13 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
+    environment: 
+      name: dockerhub
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
