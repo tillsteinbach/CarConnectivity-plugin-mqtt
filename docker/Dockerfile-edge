@@ -19,21 +19,9 @@ COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 
 RUN apk --no-cache add --virtual build-dependencies git \
                                                     build-base \
-                                                    musl-dev \
-                                                    rust \
-                                                    cargo \
-    && apk --no-cache add openssl-dev \
-                          libffi-dev \
-                          jpeg-dev \
-                          zlib-dev \
-                          freetype-dev \
-                          lcms2-dev \
-                          openjpeg-dev \
-                          tiff-dev \
-                          tk-dev \
-                          tcl-dev \
-                          musl-locales \
-                          musl-locales-lang \
+    && apk --no-cache add py3-cryptography \
+                          py3-cffi \
+                          py3-pillow \
     && pip install --no-cache-dir ./carconnectivity-mqtt \
     && pip install --pre carconnectivity-connector-volkswagen \
     && pip install --pre carconnectivity-connector-skoda \
