@@ -19,6 +19,7 @@ COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 
 RUN apk --no-cache add --virtual build-dependencies git \
     && apk --no-cache add py3-cryptography \
+                          py3-cffi \
                           py3-pillow \
     && pip install --no-cache-dir ./carconnectivity-mqtt \
     && pip install --pre carconnectivity-connector-volkswagen \
