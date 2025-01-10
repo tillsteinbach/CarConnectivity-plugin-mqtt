@@ -18,7 +18,7 @@ RUN python3.13 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip3 install --no-cache-dir wheel
 
-RUN pip3 install --no-cache carconnectivity-plugin-mqtt==${VERSION}
+RUN pip3 install --no-cache carconnectivity-plugin-mqtt==${VERSION} \
  && pip install --no-cache carconnectivity-connector-volkswagen \
  && pip install --no-cache carconnectivity-connector-skoda
 
