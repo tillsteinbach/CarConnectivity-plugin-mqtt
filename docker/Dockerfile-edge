@@ -22,7 +22,8 @@ RUN apk --no-cache add --virtual build-dependencies git \
                                                     musl-dev \
                                                     rust \
                                                     cargo \
-    && apk --no-cache add openssl-dev \
+    && apk --no-cache add py3-cryptography \
+                          openssl-dev \
                           libffi-dev \
                           jpeg-dev \
                           zlib-dev \
