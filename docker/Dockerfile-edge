@@ -15,7 +15,7 @@ COPY . carconnectivity-mqtt
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-RUN python3.12 -m venv /opt/venv
+RUN python3.13 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip3 install --no-cache-dir wheel
