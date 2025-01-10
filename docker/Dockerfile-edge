@@ -1,48 +1,50 @@
-FROM python:3.12.8-alpine AS base
-RUN apk add --update tzdata
+# Here is the build image
+FROM ubuntu:24.04 as basebuilder
 
-FROM python:3.12.8-alpine
-ARG VERSION
-ENV CONFIG_FILE="/carconnectivity.json"
-ENV ADDITIONAL_INSTALLS=
-ENV ADDITIONAL_PARAMETERS=
-ENV TZ=
-ENV MUSL_LOCPATH="/usr/share/i18n/locales/musl"
+ARG DEBIAN_FRONTEND="noninteractive"
 
+RUN apt-get update && apt-get install --no-install-recommends -y pkg-config gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.13 python3.13-dev python3.13-venv python3-pip python3-wheel build-essential && \
+    apt-get install --no-install-recommends -y libpq-dev libffi-dev libssl-dev rustc cargo libjpeg-dev zlib1g-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM basebuilder as builder
 COPY . carconnectivity-mqtt
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy zoneinfo
-COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
+RUN python3.12 -m venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip3 install --no-cache-dir wheel
 
-RUN apk --no-cache add --virtual build-dependencies git \
-                                                    build-base \
-                                                    musl-dev \
-                                                    rust \
-                                                    cargo \
-    && apk --no-cache add openssl-dev \
-                          libffi-dev \
-                          jpeg-dev \
-                          zlib-dev \
-                          freetype-dev \
-                          lcms2-dev \
-                          openjpeg-dev \
-                          tiff-dev \
-                          tk-dev \
-                          tcl-dev \
-                          musl-locales \
-                          musl-locales-lang \
-                          py3-pillow \
-                          py3-cryptography \
-                          py3-cffi \
-    && pip install --upgrade pip \
-    && pip install cryptography \
-    && pip install --no-cache-dir ./carconnectivity-mqtt \
-    && pip install --pre carconnectivity-connector-volkswagen \
-    && pip install --pre carconnectivity-connector-skoda \
-    && apk del build-dependencies
+RUN pip3 install --no-cache-dir ./carconnectivity-mqtt
+
+
+FROM ubuntu:22.04 AS baserunner
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
+RUN apt-get update && apt-get install --no-install-recommends -y gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.13 python3.13-venv wget && \
+    apt-get install --no-install-recommends -y libpq5 libjpeg8 zlib1g && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM baserunner AS runner-image
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
+ENV CONFIG_FILE="/carconnectivity.json"
+ENV ADDITIONAL_INSTALLS=
+ENV ADDITIONAL_PARAMETERS=
+
+COPY --from=builder /opt/venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# make sure all messages always reach console
+ENV PYTHONUNBUFFERED=1
 
 SHELL ["/bin/sh", "-c"]
 ENTRYPOINT ["/entrypoint.sh"]
