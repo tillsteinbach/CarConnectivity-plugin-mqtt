@@ -1,39 +1,53 @@
-FROM python:3.12.8-alpine AS base
-RUN apk add --update tzdata
+# syntax = docker/dockerfile:experimental
+# Here is the build image
+FROM ubuntu:24.04 as basebuilder
 
-FROM python:3.12.8-alpine
+ARG DEBIAN_FRONTEND="noninteractive"
+ENV TZ="Etc/UTC"
+
+RUN apt-get update && apt-get install --no-install-recommends -y git pkg-config gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.13 python3.13-dev python3.13-venv python3-pip python3-wheel build-essential && \
+    apt-get install --no-install-recommends -y libpq-dev libffi-dev libssl-dev rustc cargo libjpeg-dev zlib1g-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM basebuilder as builder
 ARG VERSION
+
+RUN python3.13 -m venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip3 install --no-cache-dir wheel
+
+RUN pip3 install --no-cache carconnectivity-plugin-mqtt==${VERSION}
+ && pip install --no-cache carconnectivity-connector-volkswagen \
+ && pip install --no-cache carconnectivity-connector-skoda
+
+FROM ubuntu:22.04 AS baserunner
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
+RUN apt-get update && apt-get install --no-install-recommends -y gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+    apt-get install --no-install-recommends -y python3.13 python3.13-venv wget && \
+    apt-get install --no-install-recommends -y libpq5 libjpeg8 zlib1g && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+FROM baserunner AS runner-image
+
+ARG DEBIAN_FRONTEND="noninteractive"
+
 ENV CONFIG_FILE="/carconnectivity.json"
 ENV ADDITIONAL_INSTALLS=
 ENV ADDITIONAL_PARAMETERS=
-ENV TZ=
-ENV MUSL_LOCPATH="/usr/share/i18n/locales/musl"
-
-
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy zoneinfo
-COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
-# Pillow depenencies
-RUN apk --no-cache add --virtual build-dependencies build-base \
-    && apk --no-cache add openssl-dev \
-                          libffi-dev \
-                          jpeg-dev \
-                          zlib-dev \
-                          freetype-dev \
-                          lcms2-dev \
-                          openjpeg-dev \
-                          tiff-dev \
-                          tk-dev \
-                          tcl-dev \
-                          musl-locales \
-                          musl-locales-lang \
-    && pip install carconnectivity-plugin-mqtt==${VERSION} \
-    && pip install carconnectivity-connector-volkswagen \
-    && pip install carconnectivity-connector-skoda \
-    && apk del build-dependencies
+COPY --from=builder /opt/venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# make sure all messages always reach console
+ENV PYTHONUNBUFFERED=1
 
 SHELL ["/bin/sh", "-c"]
 ENTRYPOINT ["/entrypoint.sh"]
