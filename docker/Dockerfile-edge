@@ -17,11 +17,23 @@ RUN chmod +x /entrypoint.sh
 # Copy zoneinfo
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 
-RUN apk --no-cache add --virtual build-dependencies git \
-                                                    build-base \
-    && apk --no-cache add py3-cryptography \
-                          py3-cffi \
-                          py3-pillow \
+RUN --mount=type=cache,target=/root/.cache/pip apk --no-cache add --virtual build-dependencies git \
+                                                                            build-base \
+                                                                            musl-dev \
+                                                                            rust \
+                                                                            cargo \
+    && apk --no-cache add openssl-dev \
+                          libffi-dev \
+                          jpeg-dev \
+                          zlib-dev \
+                          freetype-dev \
+                          lcms2-dev \
+                          openjpeg-dev \
+                          tiff-dev \
+                          tk-dev \
+                          tcl-dev \
+                          musl-locales \
+                          musl-locales-lang \
     && pip install --no-cache-dir ./carconnectivity-mqtt \
     && pip install --pre carconnectivity-connector-volkswagen \
     && pip install --pre carconnectivity-connector-skoda \
