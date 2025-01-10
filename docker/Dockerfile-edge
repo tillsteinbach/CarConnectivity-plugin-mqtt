@@ -1,3 +1,4 @@
+# syntax = docker/dockerfile:experimental
 # Here is the build image
 FROM ubuntu:24.04 as basebuilder
 
