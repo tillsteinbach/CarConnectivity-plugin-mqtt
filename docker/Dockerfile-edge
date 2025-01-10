@@ -17,7 +17,7 @@ RUN chmod +x /entrypoint.sh
 # Copy zoneinfo
 COPY --from=base /usr/share/zoneinfo /usr/share/zoneinfo
 
-RUN --no-cache add --virtual build-dependencies git \
+RUN apk --no-cache add --virtual build-dependencies git \
                                                                             build-base \
                                                                             musl-dev \
                                                                             rust \
