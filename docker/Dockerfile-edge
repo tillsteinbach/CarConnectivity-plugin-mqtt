@@ -3,6 +3,7 @@
 FROM ubuntu:24.04 as basebuilder
 
 ARG DEBIAN_FRONTEND="noninteractive"
+ENV TZ="Etc/UTC"
 
 RUN apt-get update && apt-get install --no-install-recommends -y git pkg-config gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     apt-get install --no-install-recommends -y python3.13 python3.13-dev python3.13-venv python3-pip python3-wheel build-essential && \
@@ -11,9 +12,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y git pkg-config 
 
 FROM basebuilder as builder
 COPY . carconnectivity-mqtt
-
-COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 RUN python3.13 -m venv /opt/venv
 # Make sure we use the virtualenv:
@@ -39,6 +37,9 @@ ARG DEBIAN_FRONTEND="noninteractive"
 ENV CONFIG_FILE="/carconnectivity.json"
 ENV ADDITIONAL_INSTALLS=
 ENV ADDITIONAL_PARAMETERS=
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 COPY --from=builder /opt/venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv
