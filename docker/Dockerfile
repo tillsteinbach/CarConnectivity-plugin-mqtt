@@ -1,7 +1,7 @@
-FROM python:3.13.0-alpine AS base
+FROM python:3.12.8-alpine AS base
 RUN apk add --update tzdata
 
-FROM python:3.13.0-alpine
+FROM python:3.12.8-alpine
 ARG VERSION
 ENV CONFIG_FILE="/carconnectivity.json"
 ENV ADDITIONAL_INSTALLS=
