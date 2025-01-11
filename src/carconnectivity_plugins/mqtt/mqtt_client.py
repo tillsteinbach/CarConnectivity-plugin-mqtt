@@ -29,6 +29,14 @@ LOG = logging.getLogger("carconnectivity.plugins.mqtt")
 
 
 class TopicFormat(Enum):
+    """
+    An enumeration representing different MQTT topic formats.
+
+    Attributes:
+        SIMPLE (str): Represents a simple topic format.
+        EXTENDED (str): Represents an extended topic format with extra topics for last update time and unit.
+        JSON (str): Represents a JSON topic format.
+    """
     SIMPLE = 'simple'
     EXTENDED = 'extended'
     JSON = 'json'
@@ -43,7 +51,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
                  topic_filter_regex=None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
-                 topic_format: TopicFormat = TopicFormat.SIMPLE) -> None:
+                 topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
         self.plugin_id: str = plugin_id
@@ -63,6 +71,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.has_changes = False
         self.with_raw_json_topic = with_raw_json_topic
         self.topic_format = topic_format
+        self.locale = locale
 
         self.on_connect = self._on_connect_callback
         self.on_message = self._on_message_callback
@@ -180,7 +189,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
 
     def _publish_element(self, element: Any) -> None:
         if element.enabled:
-            converted_value = self.convert_value(element.value)
+            value, unit = element.in_locale(locale=self.locale)
+            converted_value = self.convert_value(value)
             LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
             if self.topic_format == TopicFormat.SIMPLE:
                 # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
@@ -199,7 +209,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                         converted_time_str = str(converted_time)
                     result_dict['upd'] = converted_time_str
                 if element.unit is not None:
-                    result_dict['uni'] = element.unit
+                    result_dict['uni'] = unit
                 # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
                 self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True,
                              payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))

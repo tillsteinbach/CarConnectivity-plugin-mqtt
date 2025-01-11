@@ -210,6 +210,8 @@ class Plugin(BasePlugin):
                     self.time_format = locale.nl_langinfo(locale.D_T_FMT)
             except locale.Error as err:
                 raise ConfigurationError('Invalid locale specified in config ("locale" must be a valid locale)') from err
+        else:
+            self.locale: Optional[str] = locale.getlocale()[0]
 
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
                                                      plugin_id=plugin_id,
@@ -224,7 +226,8 @@ class Plugin(BasePlugin):
                                                      convert_timezone=self.convert_timezone,
                                                      time_format=self.time_format,
                                                      with_raw_json_topic=False,
-                                                     topic_format=self.topic_format)
+                                                     topic_format=self.topic_format,
+                                                     locale=self.locale)
         if self.mqtttls:
             if self.mqtttls_insecure:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE
