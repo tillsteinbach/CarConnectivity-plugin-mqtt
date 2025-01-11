@@ -89,6 +89,8 @@ You can format times in your local format by adding `timeformat` to your config.
       - LC_ALL=de_DE
 ...
 ```
+### Using Miles or Farenheit
+CarConnectivity will guess your desired temperature or range/speed unit based on the systems locale. If it does not match what you want, you can set a different locale in your `carconnectivity.json` json config.
 
 ### Without Docker
 If you don't want to use docker you can obtain carconnectivity-mqtt also as a stand-alone application from [PyPI](https://pypi.org/project/carconnectivity-plugin-mqtt/). Just install instead using:

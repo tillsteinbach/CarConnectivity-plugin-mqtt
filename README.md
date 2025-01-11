@@ -100,6 +100,8 @@ You can format times in your local format by adding `timeformat` to your config.
       - LC_ALL=de_DE
 ...
 ```
+### Using Miles or Farenheit
+CarConnectivity will guess your desired temperature or range/speed unit based on the systems locale. If it does not match what you want, you can set a different locale in your `carconnectivity.json` json config.
 
 ### Credentials
 If you do not want to provide your username or password inside the configuration you have to create a ".netrc" file at the appropriate location (usually this is your home folder):
