@@ -16,6 +16,7 @@ COPY . carconnectivity-mqtt
 RUN python3.13 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
 RUN pip3 install --no-cache-dir wheel
 
 RUN pip3 install --no-cache-dir ./carconnectivity-mqtt \
