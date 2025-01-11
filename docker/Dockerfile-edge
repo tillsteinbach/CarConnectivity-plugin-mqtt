@@ -19,9 +19,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 RUN pip3 install --no-cache-dir wheel
 
-RUN pip3 install --no-cache-dir ./carconnectivity-mqtt \
- && pip install --no-cache carconnectivity-connector-volkswagen \
- && pip install --no-cache carconnectivity-connector-skoda
+RUN pip3 install --pre --no-cache-dir ./carconnectivity-mqtt[connectors]
 
 FROM ubuntu:22.04 AS baserunner
 
