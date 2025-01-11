@@ -50,4 +50,6 @@ ENV PYTHONUNBUFFERED=1
 
 SHELL ["/bin/sh", "-c"]
 ENTRYPOINT ["/entrypoint.sh"]
-CMD carconnectivity-mqtt ${CONFIG_FILE} ${ADDITIONAL_PARAMETERS}
+CMD carconnectivity-mqtt ${CONFIG_FILE} --healthcheckfile /carconnectivity_healthy ${ADDITIONAL_PARAMETERS}
+
+HEALTHCHECK --interval=1m CMD [ -f /carconnectivity_healthy ] && test $(find /carconnectivity_healthy -mmin -2 -type f -exec grep -q "^healthy$" {} \; -print | wc -l) -eq 1 || exit 1

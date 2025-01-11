@@ -77,6 +77,7 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
     parser.add_argument('--tokenfile', help=f'file to store token (default: {default_temp})', default=default_temp)
     default_cache_temp = os.path.join(tempfile.gettempdir(), 'carconnectivity.cache')
     parser.add_argument('--cachefile', help=f'file to store cache (default: {default_cache_temp})', default=default_cache_temp)
+    parser.add_argument('--healthcheckfile', help='file to store healthcheck data', default=None)
 
     logging_group = parser.add_argument_group('Logging')
     logging_group.add_argument('-v', '--verbose', action="append_const", help='Logging level (verbosity)', const=-1,)
@@ -105,7 +106,13 @@ def main() -> None:  # noqa: C901 # pylint: disable=too-many-statements,too-many
                     car_connectivity.startup()
                     try:
                         while True:
-                            time.sleep(1)
+                            if args.healthcheckfile is not None:
+                                with open(file=args.healthcheckfile, mode='w', encoding='utf-8') as healthcheck_file:
+                                    if car_connectivity.is_healthy():
+                                        healthcheck_file.write('healthy')
+                                    else:
+                                        healthcheck_file.write('unhealthy')
+                            time.sleep(60)
                     except KeyboardInterrupt:
                         LOG.info('Keyboard interrupt received, shutting down...')
 
