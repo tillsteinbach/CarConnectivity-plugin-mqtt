@@ -36,7 +36,7 @@ jobs:
         id: prepare
         run: |
           platform=${{ matrix.platform }}
-          echo "platform_pair=${platform//\//-}" >> $GITHUB_OUTPUT"
+          echo "platform_pair=${platform//\//-}" >> $GITHUB_OUTPUT
           echo "scope=${{ github.ref_name }}-${platform}" >> $GITHUB_OUTPUT
       - name: Docker meta
         id: meta
