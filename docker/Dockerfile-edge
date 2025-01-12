@@ -17,9 +17,9 @@ RUN python3.12 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
-RUN pip3 install --no-cache-dir wheel
-
-RUN pip3 install --pre --no-cache-dir ./carconnectivity-mqtt[connectors]
+RUN --mount=type=cache,target=/root/.cache/pip pip3 install --no-cache-dir wheel
+RUN --mount=type=cache,target=/root/.cache/pip pip3 install --no-cache-dir cryptography
+RUN --mount=type=cache,target=/root/.cache/pip pip3 install --pre --no-cache-dir ./carconnectivity-mqtt[connectors]
 
 FROM ubuntu:22.04 AS baserunner
 
