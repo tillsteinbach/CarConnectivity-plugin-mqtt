@@ -32,11 +32,12 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - name: Prepare
+      - name: Prepare Variables
+        id: prepare
         run: |
           platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-          echo "SCOPE=${{ env.GITHUB_REF_NAME }}-${platform}" >> $GITHUB_ENV
+          echo "platform_pair=${platform//\//-}" >> $GITHUB_OUTPUT"
+          echo "scope=${{ github.ref_name }}-${platform}" >> $GITHUB_OUTPUT
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -74,8 +75,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,"name=${{ env.DOCKERHUB_REPO }},${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ env.SCOPE }}
-          cache-to: type=gha,scope=${{ env.SCOPE }},mode=max
+          cache-from: type=gha,scope=${{ steps.prepare.outputs.scope }}
+          cache-to: type=gha,scope=${{ steps.prepare.outputs.scope }},mode=max
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
@@ -84,7 +85,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ steps.prepare.outputs.platform_pair }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
