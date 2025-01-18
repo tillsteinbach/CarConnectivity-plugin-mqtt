@@ -46,6 +46,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
     """
     MQTT client for car connectivity.
     """
+    # pylint: disable-next=too-many-arguments, too-many-positional-arguments, too-many-locals
     def __init__(self, car_connectivity: CarConnectivity, plugin_id: str, client_id: Optional[str] = None,
                  protocol: MQTTProtocolVersion = MQTTProtocolVersion.MQTTv311,
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
@@ -90,6 +91,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
 
         self.will_set(topic=f'{self.prefix}/plugins/{self.plugin_id}/connected', qos=1, retain=True, payload=False)
 
+    # pylint: disable-next=too-many-branches
     def _add_topic(self, topic: str, with_filter: bool = True, subscribe: bool = True, writeable: bool = False) -> None:
         """
         Add a topic to the list of topics and writeable topics.
@@ -325,7 +327,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         else:
             self.has_error = False
 
-    def _on_connect_callback(self, mqttc, obj, flags, reason_code, properties) -> None:  # noqa: C901  # pylint: disable=too-many-branches
+    # pylint: disable-next=too-many-arguments, too-many-positional-arguments, too-many-statements, too-many-branches
+    def _on_connect_callback(self, mqttc, obj, flags, reason_code, properties) -> None:  # noqa: C901
         """
         Callback for connection to the MQTT broker.
         On successful connection it will subscribe to the force update topic and all writeable topics.
@@ -420,7 +423,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         else:
             LOG.error('Could not connect (%s)', reason_code)
 
-    def _on_disconnect_callback(self, client, userdata, flags, reason_code, properties) -> None:  # noqa: C901  # pylint: disable=too-many-branches,no-self-use
+    # pylint: disable-next=too-many-branches, too-many-arguments, too-many-positional-arguments
+    def _on_disconnect_callback(self, client, userdata, flags, reason_code, properties) -> None:  # noqa: C901
         """
         Callback for disconnection from the MQTT broker.
 
@@ -451,6 +455,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         else:
             LOG.error('Client unexpectedly disconnected (%s), trying to reconnect', reason_code)
 
+    # pylint: disable-next=too-many-arguments, too-many-positional-arguments
     def _on_subscribe_callback(self, mqttc, obj, mid, reason_codes, properties) -> None:
         """
         Callback for subscribing to a topic.
@@ -474,6 +479,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         else:
             LOG.error('Subscribe was not successfull (%s)', ', '.join(reason_codes))
 
+    # pylint: disable-next=too-many-branches, too-many-statements
     def _on_message_callback(self, mqttc, obj, msg) -> None:  # noqa: C901
         """
         Callback for receiving a message from the MQTT broker.
@@ -507,7 +513,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         elif len(msg.payload) == 0:
             LOG.debug('ignoring empty message')
         # handle force upate message
-        elif msg.topic == f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic':
+        elif msg.topic == f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic':  # pylint: disable=too-many-nested-blocks
             if msg.payload.lower() == b'True'.lower():
                 LOG.info('Update triggered by MQTT message')
                 self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=True)

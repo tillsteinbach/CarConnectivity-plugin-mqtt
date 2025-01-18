@@ -26,14 +26,14 @@ if TYPE_CHECKING:
 LOG: logging.Logger = logging.getLogger("carconnectivity.plugins.mqtt")
 
 
-class Plugin(BasePlugin):
+class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     Plugin class for MQTT connectivity.
     Args:
         car_connectivity (CarConnectivity): An instance of CarConnectivity.
         config (Dict): Configuration dictionary containing connection details.
     """
-    def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
+    def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config)
 
         self._background_connect_thread: Optional[threading.Thread] = None
