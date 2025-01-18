@@ -15,7 +15,7 @@ from paho.mqtt.properties import Properties
 from paho.mqtt.enums import MQTTProtocolVersion, CallbackAPIVersion, MQTTErrorCode
 
 from carconnectivity import errors
-from carconnectivity import attributes
+from carconnectivity import attributes, commands
 from carconnectivity.observable import Observable
 from carconnectivity.util import ExtendedWithNullEncoder
 
@@ -238,12 +238,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         topic: str = f'{self.prefix}{element.get_absolute_path()}'
         # An attribute is enabled
         if flags & Observable.ObserverEvent.ENABLED:
-            # For ChangeableAttributes, subscribe to the topic and add it to the list of writeable topics
-            if isinstance(element, attributes.ChangeableAttribute):
-                self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
-            # For GenericAttributes, add it to the list of topics
-            elif isinstance(element, attributes.GenericAttribute):
-                self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
+            if isinstance(element, attributes.GenericAttribute):
+                # For Changeable Attributes, subscribe to the topic and add it to the list of writeable topics
+                if element.is_changeable:
+                    self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
+                # For not mutable Attributes, add it to the list of topics
+                else:
+                    self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
         elif (flags & Observable.ObserverEvent.VALUE_CHANGED) \
                 or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED)):
@@ -305,7 +306,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         """
         if code is None:
             code = CarConnectivityErrors.SUCCESS
-        if code != CarConnectivityErrors.SUCCESS or message != '' or self.has_error is None or self.has_error:
+        if code == CarConnectivityErrors.SUCCESS:
+            topic = f'{self.prefix}/plugins/{self.plugin_id}/error/code'
+            self.publish(topic=topic, qos=1, retain=False, payload=0)
+            topic = f'{self.prefix}/plugins/{self.plugin_id}/error/message'
+            self.publish(topic=topic, qos=1, retain=False, payload=None)
+        elif message != '' or self.has_error is None or self.has_error:
             topic = f'{self.prefix}/plugins/{self.plugin_id}/error/code'
             self.publish(topic=topic, qos=1, retain=False, payload=code.value)
             if topic not in self.topics:
@@ -360,12 +366,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     # Skip topics that are filtered
                     if self.topic_filter_regex is not None and self.topic_filter_regex.match(attribute_topic):
                         continue
-                    # if attribute is changeable, subscribe to it and add it to the list of writeable topics
-                    if isinstance(attribute, attributes.ChangeableAttribute):
-                        self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=True)
-                    # if attribute is not writeable, add it to the list of topics
-                    elif isinstance(attributes, attributes.GenericAttribute):
-                        self._add_topic(attribute_topic, with_filter=True, subscribe=False, writeable=False)
+                    if isinstance(attribute, attributes.GenericAttribute):
+                        # if attribute is changeable, subscribe to it and add it to the list of writeable topics
+                        if attribute.is_changeable:
+                            self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=True)
+                        # if attribute is not writeable, add it to the list of topics
+                        else:
+                            self._add_topic(attribute_topic, with_filter=True, subscribe=False, writeable=False)
                     # if attribute has a value, publish it
                     if attribute.value is not None:
                         self._publish_element(attribute)
@@ -513,15 +520,69 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 # message to _writetopic are for setting values
                 if address.endswith('_writetopic'):
                     address = address[:-len('_writetopic')]
+                    if self.topic_format == TopicFormat.JSON:
+                        address = address[:-len('_json')]
 
                     attribute = self.car_connectivity.get_by_path(address)
                     # Writing can be only to changeable attributes
-                    if isinstance(attribute, attributes.ChangeableAttribute):
+                    if isinstance(attribute, commands.GenericCommand) and attribute.is_changeable:
                         try:
-                            # Set the value of the attribute
-                            attribute.value = msg.payload.decode()
-                            self._set_error(code=CarConnectivityErrors.SUCCESS)
-                            LOG.debug('Successfully set value')
+                            if self.topic_format == TopicFormat.JSON:
+                                value_dict = json.loads(msg.payload)
+                                if not isinstance(value_dict, dict):
+                                    error_message: str = 'Error setting command: JSON message is not a dictionary or string'
+                                    self._set_error(code=CarConnectivityErrors.SET_FORMAT, message=error_message)
+                                    LOG.info(error_message)
+                                else:
+                                    attribute.set_value(value_dict)
+                                    self._set_error(code=CarConnectivityErrors.SUCCESS)
+                                    LOG.debug('Successfully executed command')
+                            else:
+                                # Set the value of the attribute
+                                attribute.value = msg.payload.decode()
+                                self._set_error(code=CarConnectivityErrors.SUCCESS)
+                                LOG.debug('Successfully set value')
+                        # If the value is not in the correct format set an error
+                        except ValueError as value_error:
+                            error_message: str = f'Error executing command: {value_error}'
+                            self._set_error(code=CarConnectivityErrors.SET_FORMAT, message=error_message)
+                            LOG.info(error_message)
+                        # If the value could not be set set an error
+                        except errors.SetterError as setter_error:
+                            error_message = f'Error executing command: {setter_error}'
+                            self._set_error(code=CarConnectivityErrors.SET_ERROR, message=error_message)
+                            LOG.info(error_message)
+                    elif isinstance(attribute, attributes.GenericAttribute) and attribute.is_changeable:
+                        try:
+                            if self.topic_format == TopicFormat.JSON:
+                                value_dict = json.loads(msg.payload)
+                                if not isinstance(value_dict, dict):
+                                    error_message: str = 'Error setting value: JSON message is not a dictionary containing "val" key and optional "uni" key'
+                                    self._set_error(code=CarConnectivityErrors.SET_FORMAT, message=error_message)
+                                    LOG.info(error_message)
+                                elif 'val' not in value_dict:
+                                    error_message: str = 'Error setting value: JSON message does not contain "val" key'
+                                    self._set_error(code=CarConnectivityErrors.SET_FORMAT, message=error_message)
+                                    LOG.info(error_message)
+                                else:
+                                    value: Any = value_dict['val']
+                                    unit: Any = attribute.unit
+                                    if 'uni' in value_dict:
+                                        if value_dict['uni'] is not None and attribute.unit_type is not None and value_dict['uni'] in attribute.unit_type:
+                                            unit = attribute.unit_type(value_dict['uni'])
+                                        else:
+                                            error_message: str = 'Error setting value: JSON message contains invalid "uni" key: ' \
+                                                f'{value_dict["uni"]} not in {attribute.unit_type}'
+                                            self._set_error(code=CarConnectivityErrors.SET_FORMAT, message=error_message)
+                                            LOG.info(error_message)
+                                    attribute.set_value(value, unit)
+                                    self._set_error(code=CarConnectivityErrors.SUCCESS)
+                                    LOG.debug('Successfully set value')
+                            else:
+                                # Set the value of the attribute
+                                attribute.value = msg.payload.decode()
+                                self._set_error(code=CarConnectivityErrors.SUCCESS)
+                                LOG.debug('Successfully set value')
                         # If the value is not in the correct format set an error
                         except ValueError as value_error:
                             error_message: str = f'Error setting value: {value_error}'
@@ -541,13 +602,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 else:
                     attribute = self.car_connectivity.get_by_path(address)
                     # If trying to set a value on a changeable attribute but not with the writeable topic
-                    if isinstance(attribute, attributes.ChangeableAttribute):
+                    if isinstance(attribute, attributes.GenericAttribute) and attribute.is_changeable:
                         error_message = f'Trying to change item on not writeable topic {msg.topic}: {msg.payload}, please use {msg.topic}_writetopic instead'
                         self._set_error(code=CarConnectivityErrors.MESSAGE_NOT_UNDERSTOOD, message=error_message)
                         LOG.error(error_message)
                     # Set error when attribute is not found or not changeable
                     else:
-                        error_message = f'Trying to change item that is not a changeable attribute {msg.topic}: {msg.payload}'
+                        error_message = f'Trying to change item that is not a changeable attribute and not using _writetopic{msg.topic}: {msg.payload}'
                         self._set_error(code=CarConnectivityErrors.MESSAGE_NOT_UNDERSTOOD, message=error_message)
                         LOG.error(error_message)
             # Only react to messages that start with the prefix
