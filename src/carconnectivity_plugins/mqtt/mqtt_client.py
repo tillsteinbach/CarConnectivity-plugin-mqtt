@@ -575,7 +575,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                                     unit: Any = attribute.unit
                                     if 'uni' in value_dict:
                                         if value_dict['uni'] is not None and attribute.unit_type is not None and value_dict['uni'] in attribute.unit_type:
-                                            assert isinstance(attribute.unit_type, Enum)
+                                            # Assert only to help typechecker
+                                            assert isinstance(attribute.unit_type, Enum)  # nosec
                                             unit = attribute.unit_type(value_dict['uni'])
                                         else:
                                             error_message: str = 'Error setting value: JSON message contains invalid "uni" key: ' \
