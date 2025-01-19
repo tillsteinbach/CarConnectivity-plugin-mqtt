@@ -17,7 +17,7 @@ from paho.mqtt.enums import MQTTProtocolVersion, CallbackAPIVersion, MQTTErrorCo
 from carconnectivity import errors
 from carconnectivity import attributes, commands
 from carconnectivity.observable import Observable
-from carconnectivity.util import ExtendedWithNullEncoder
+from carconnectivity.json_util import ExtendedWithNullEncoder
 
 if TYPE_CHECKING:
     from typing import Optional, Literal, List, Dict, Any, Set
