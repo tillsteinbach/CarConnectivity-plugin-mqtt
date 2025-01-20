@@ -31,7 +31,7 @@ The `type` and config options specific to your connector or plugin can be found 
         ],
         "plugins": [
             {
-                "type": "mqtt", // Definition for the MQTT Connection
+                "type": "mqtt", // Minimal definition for the MQTT Connection
                 "config": {
                     "broker": "192.168.0.123", // Broker hostname or IP address
                     "username": "testuser", // Broker username to login
@@ -51,6 +51,7 @@ These are the valid options for the MQTT plugin
         "plugins": [
             {
                 "type": "mqtt", // Definition for the MQTT plugin
+                "disabled": false, // You can disable plugins without removing them from the config completely
                 "config": {
                     "log_level": "error", // The log level for the plugin. Otherwise uses the global log level
                     "broker": "192.168.0.123", // Broker hostname or IP address

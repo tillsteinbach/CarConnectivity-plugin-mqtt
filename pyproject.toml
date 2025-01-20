@@ -43,6 +43,7 @@ connectors = [
 ]
 plugins = [
     'carconnectivity-plugin-abrp',
+    'carconnectivity-plugin-homekit',
 ]
 
 [project.urls]
