@@ -248,8 +248,9 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 else:
                     self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
-        elif (flags & Observable.ObserverEvent.VALUE_CHANGED) \
-                or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED)):
+        elif ((flags & Observable.ObserverEvent.VALUE_CHANGED)
+                or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED))) \
+                and isinstance(element, attributes.GenericAttribute):
             self._publish_element(element)
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
         elif flags & Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
