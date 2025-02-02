@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.1.0",
+    "carconnectivity>=0.2.0",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
@@ -39,6 +39,7 @@ classifiers = [
 connectors = [
     'carconnectivity-connector-volkswagen',
     'carconnectivity-connector-skoda',
+    'carconnectivity-connector-tronity',
 ]
 plugins = [
     'carconnectivity-plugin-abrp',
