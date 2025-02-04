@@ -24,11 +24,22 @@ If you want to use CarConnectivity-mqtt, the easiest way is to obtain it from [P
 pip3 install carconnectivity-plugin-mqtt
 ```
 
-### Connectors & Plugins
+#### Connectors & Plugins
 In order to connect vehciles from various brands, you need to install connector, e.g. with:
 ```bash
 pip3 install carconnectivity-connector-volkswagen
 pip3 install carconnectivity-connector-skoda
+```
+
+### Install using pipx (alternative)
+[pipx](https://github.com/pypa/pipx) is a tool to help you install and run end-user applications written in Python. [pipx](https://github.com/pypa/pipx) creates an isolated environment for each application and its associated packages.
+```bash
+pipx install carconnectivity-plugin-mqtt
+```
+#### Important
+When using [pipx](https://github.com/pypa/pipx), connectors and plugins need to be explicitly installed in the carconnectivity-mqtt environment. Otherwise the connectors or plugins will not be found due to the isolation. You can do that with e.g.:
+```bash
+pipx inject carconnectivity-plugin-mqtt carconnectivity-connector-volkswagen
 ```
 
 ### Create config file
