@@ -1,0 +1,15 @@
+{
+    "carConnectivity": {
+        "log_level": "debug",
+        "connectors": [],
+        "plugins": [
+            {
+                "type": "mqtt",
+                "disabled": false,
+                "config": {
+                    "log_level": "debug"
+                }
+            }
+        ]
+    }
+}

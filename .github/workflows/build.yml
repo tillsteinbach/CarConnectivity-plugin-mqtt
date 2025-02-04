@@ -41,6 +41,16 @@ jobs:
     - name: Install built package
       run: |
         pip install dist/*.whl
+    - name: Run
+      run: |
+        set +e
+        output=$(carconnectivity test/integration_test/carConnectivity.json 2>&1)
+        echo "$output" | grep -q 'There was a problem when authenticating with one or multiple services'
+        if [ $? -ne 0 ]; then
+          echo "$output"
+          exit 1
+        fi
+        set -e
     - name: Lint
       run: |
         make lint
