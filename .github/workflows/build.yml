@@ -45,7 +45,7 @@ jobs:
       run: |
         set +e
         output=$(carconnectivity test/integration_test/carConnectivity.json 2>&1)
-        echo "$output" | grep -q 'There was a problem when authenticating with one or multiple services'
+        echo "$output" | grep -q 'There was a problem with the configuration: No MQTT broker specified in config ("broker" missing)'
         if [ $? -ne 0 ]; then
           echo "$output"
           exit 1
