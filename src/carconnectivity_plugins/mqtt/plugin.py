@@ -286,3 +286,6 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
 
     def get_version(self) -> str:
         return __version__
+
+    def get_type(self) -> str:
+        return "carconnectivity-plugin-mqtt"
