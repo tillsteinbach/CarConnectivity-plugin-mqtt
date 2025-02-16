@@ -23,7 +23,7 @@ SUPPORT_IMAGES = False
 try:
     from PIL import Image
     import io
-    import carconnectivity.image_util as image_util
+    from carconnectivity import image_util  # pylint: disable=ungrouped-imports
     SUPPORT_IMAGES = True
 except ImportError:
     pass
@@ -295,7 +295,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
 
-    def convert_value(self, value):
+    def convert_value(self, value):  # pylint: disable=too-many-return-statements
         """
         Convert the value to a format that is usable in MQTT.
 
