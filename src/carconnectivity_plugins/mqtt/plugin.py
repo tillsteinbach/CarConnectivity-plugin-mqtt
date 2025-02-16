@@ -16,7 +16,7 @@ import paho.mqtt.client
 from carconnectivity.errors import ConfigurationError
 from carconnectivity.util import config_remove_credentials
 from carconnectivity_plugins.base.plugin import BasePlugin
-from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient, TopicFormat
+from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient, TopicFormat, ImageFormat
 from carconnectivity_plugins.mqtt._version import __version__
 
 if TYPE_CHECKING:
@@ -213,6 +213,14 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         else:
             self.locale: Optional[str] = locale.getlocale()[0]
 
+        if 'image_format' in self.config and self.config['image_format'] is not None:
+            if self.config['image_format'] in ImageFormat:
+                self.image_format: ImageFormat = ImageFormat(self.config['image_format'])
+            else:
+                raise ConfigurationError(f'Invalid image format specified in config ("image_format" must be one of {[e.value for e in ImageFormat]})')
+        else:
+            self.image_format: ImageFormat = ImageFormat.PNG
+
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
                                                      plugin_id=plugin_id,
                                                      client_id=self.mqttclientid,
@@ -227,7 +235,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                                                      time_format=self.time_format,
                                                      with_raw_json_topic=False,
                                                      topic_format=self.topic_format,
-                                                     locale=self.locale)
+                                                     locale=self.locale,
+                                                     image_format=self.image_format)
         if self.mqtttls:
             if self.mqtttls_insecure:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE

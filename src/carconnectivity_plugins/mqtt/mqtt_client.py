@@ -19,6 +19,22 @@ from carconnectivity import attributes, commands
 from carconnectivity.observable import Observable
 from carconnectivity.json_util import ExtendedWithNullEncoder
 
+SUPPORT_IMAGES = False
+try:
+    from PIL import Image
+    import io
+    import carconnectivity.image_util as image_util
+    SUPPORT_IMAGES = True
+except ImportError:
+    pass
+
+SUPPORT_ASCII_IMAGES = False
+try:
+    import ascii_magic  # pylint: disable=unused-import # noqa: F401
+    SUPPORT_ASCII_IMAGES = True
+except ImportError:
+    pass
+
 if TYPE_CHECKING:
     from typing import Optional, Literal, List, Dict, Any, Set
 
@@ -42,6 +58,21 @@ class TopicFormat(Enum):
     JSON = 'json'
 
 
+class ImageFormat(Enum):
+    """
+    Enum for picture formats.
+
+    Attributes:
+        TXT: ASCII format
+        PNG: PNG format
+    """
+    TXT = 'txt'
+    PNG = 'png'
+
+    def __str__(self):
+        return self.value
+
+
 class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-attributes
     """
     MQTT client for car connectivity.
@@ -52,7 +83,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
                  topic_filter_regex=None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
-                 topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None) -> None:
+                 topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None, image_format: ImageFormat = ImageFormat.PNG) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
         self.plugin_id: str = plugin_id
@@ -73,6 +104,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.with_raw_json_topic = with_raw_json_topic
         self.topic_format = topic_format
         self.locale = locale
+        self.image_format: ImageFormat = image_format
 
         self.on_connect = self._on_connect_callback
         self.on_message = self._on_message_callback
@@ -286,14 +318,15 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if self.time_format is not None:
                 return converted_time.strftime(self.time_format)
             return str(converted_time)
-        # if isinstance(value, Image.Image):
-        #     if self.pictureFormat == PictureFormat.TXT or self.pictureFormat is None:
-        #         return util.imgToASCIIArt(value, columns=120, mode=util.ASCIIModes.ASCII)
-        #     if self.pictureFormat == PictureFormat.PNG:
-        #         img_io = BytesIO()
-        #         value.save(img_io, 'PNG')
-        #         return img_io.getvalue()
-        #     return util.imgToASCIIArt(value, columns=120, mode=util.ASCIIModes.ASCII)
+        if SUPPORT_IMAGES and SUPPORT_ASCII_IMAGES:
+            if isinstance(value, Image.Image):  # pyright: ignore[reportPossiblyUnboundVariable]
+                if self.image_format == ImageFormat.TXT or self.image_format is None:
+                    return image_util.image_to_ASCII_art(value, columns=120, mode=image_util.ASCIIModes.ASCII)  # pyright: ignore[reportPossiblyUnboundVariable]
+                if self.image_format == ImageFormat.PNG:
+                    img_io = io.BytesIO()  # pyright: ignore[reportPossiblyUnboundVariable]
+                    value.save(img_io, 'PNG')
+                    return img_io.getvalue()
+                return image_util.image_to_ASCII_art(value, columns=120, mode=image_util.ASCIIModes.ASCII)  # pyright: ignore[reportPossiblyUnboundVariable]
         return str(value)
 
     def _set_error(self, code: Optional[CarConnectivityErrors] = None, message: str = '') -> None:
@@ -643,18 +676,3 @@ class CarConnectivityErrors(Enum):
     MESSAGE_NOT_UNDERSTOOD = -2
     SET_FORMAT = -3
     SET_ERROR = -4
-
-
-class PictureFormat(Enum):
-    """
-    Enum for picture formats.
-
-    Attributes:
-        TXT: ASCII format
-        PNG: PNG format
-    """
-    TXT = 'txt'
-    PNG = 'png'
-
-    def __str__(self):
-        return self.value
