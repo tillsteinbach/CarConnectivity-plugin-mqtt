@@ -34,221 +34,225 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         config (Dict): Configuration dictionary containing connection details.
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
-        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config)
+        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
-        # Configure logging
-        if 'log_level' in config and config['log_level'] is not None:
-            config['log_level'] = config['log_level'].upper()
-            if config['log_level'] in logging._nameToLevel:
-                LOG.setLevel(config['log_level'])
-                self.log_level._set_value(config['log_level'])  # pylint: disable=protected-access
-            else:
-                raise ConfigurationError(f'Invalid log level: "{config["log_level"]}" not in {list(logging._nameToLevel.keys())}')
-        LOG.info("Loading mqtt plugin with config %s", config_remove_credentials(self.config))
+        LOG.info("Loading mqtt plugin with config %s", config_remove_credentials(config))
 
-        if 'topic_format' in self.config and self.config['topic_format'] is not None:
-            if self.config['topic_format'].lower() not in [e.value for e in TopicFormat]:
+        if 'topic_format' in config and config['topic_format'] is not None:
+            if config['topic_format'].lower() not in [e.value for e in TopicFormat]:
                 raise ConfigurationError(f'Invalid topic format ("topic_format" must be one of {[e.value for e in TopicFormat]})')
-            self.topic_format: TopicFormat = TopicFormat(self.config['topic_format'].lower())
+            self.active_config['topic_format'] = TopicFormat(config['topic_format'].lower())
         else:
-            self.topic_format: TopicFormat = TopicFormat.SIMPLE
+            self.active_config['topic_format'] = TopicFormat.SIMPLE
 
-        if 'broker' not in self.config or not self.config['broker']:
+        if 'broker' not in config or not config['broker']:
             raise ConfigurationError('No MQTT broker specified in config ("broker" missing)')
-        self.mqttbroker: str = self.config['broker']
+        self.active_config['broker'] = config['broker']
 
-        if 'port' in self.config and self.config['port'] is not None:
-            self.mqttport: int = self.config['port']
-            if not self.mqttport or self.mqttport < 1 or self.mqttport > 65535:
+        if 'port' in config and config['port'] is not None:
+            self.active_config['port'] = config['port']
+            if not self.active_config['port'] or self.active_config['port'] < 1 or self.active_config['port'] > 65535:
                 raise ConfigurationError('Invalid port specified in config ("port" out of range, must be 1-65535)')
         else:
-            self.mqttport: int = 0
+            self.active_config['port'] = 0
 
-        if 'clientid' in self.config:
-            self.mqttclientid: Optional[str] = self.config['clientid']
+        if 'clientid' in config:
+            self.active_config['clientid'] = config['clientid']
         else:
-            self.mqttclientid: Optional[str] = None
+            self.active_config['clientid'] = None
 
-        if 'prefix' in self.config:
-            self.mqttprefix: Optional[str] = self.config['prefix']
+        if 'prefix' in config:
+            self.active_config['prefix'] = config['prefix']
         else:
-            self.mqttprefix: Optional[str] = 'carconnectivity/0'
+            self.active_config['prefix'] = 'carconnectivity/0'
 
-        if 'keepalive' in self.config and self.config['keepalive'] is not None:
-            self.mqttkeepalive: int = self.config['keepalive']
+        if 'keepalive' in config and config['keepalive'] is not None:
+            self.active_config['keepalive'] = config['keepalive']
         else:
-            self.mqttkeepalive: int = 30
+            self.active_config['keepalive'] = 30
 
-        if 'username' in self.config:
-            self.mqttusername: Optional[str] = self.config['username']
+        if 'username' in config:
+            self.active_config['username'] = config['username']
         else:
-            self.mqttusername: Optional[str] = None
+            self.active_config['username'] = None
 
-        if 'password' in self.config:
-            self.mqttpassword: Optional[str] = self.config['password']
+        if 'password' in config:
+            self.active_config['password'] = config['password']
         else:
-            self.mqttpassword: Optional[str] = None
+            self.active_config['password'] = None
 
-        if self.mqttusername is None or self.mqttpassword is None:
-            if 'netrc' in self.config and self.config['netrc'] is not None:
-                netrc_file: str = self.config['netrc']
+        if self.active_config['username'] is None or self.active_config['password'] is None:
+            if 'netrc' in config:
+                self.active_config['netrc'] = config['netrc']
             else:
-                netrc_file: str = os.path.join(os.path.expanduser("~"), ".netrc")
+                self.active_config['netrc'] = os.path.join(os.path.expanduser("~"), ".netrc")
             try:
-                secrets = netrc.netrc(file=netrc_file)
-                authenticator = secrets.authenticators(self.mqttbroker)
+                secrets = netrc.netrc(file=self.active_config['netrc'])
+                authenticator = secrets.authenticators(self.active_config['broker'])
                 if authenticator is not None:
-                    self.mqttusername, _, self.mqttpassword = authenticator
+                    self.active_config['username'], _, self.active_config['password'] = authenticator
                 else:
-                    raise ConfigurationError(f'No credentials found for {self.mqttbroker} in netrc-file {netrc_file}')
+                    raise ConfigurationError(f'No credentials found for {self.active_config['broker']} in netrc-file {self.active_config['netrc']}')
             except FileNotFoundError as exc:
-                raise ConfigurationError(f'{netrc_file} netrc-file was not found. Create it or provide username and password in the config.') from exc
+                raise ConfigurationError(f'{self.active_config['netrc']} netrc-file was not found. Create it or provide'
+                                         ' username and password in the config.') from exc
 
         mqttversion_choices: list[str] = ['3.1', '3.1.1', '5']
-        if 'version' in self.config:
-            if self.config['version'] == '3.1':
+        if 'version' in config:
+            if config['version'] == '3.1':
+                self.active_config['version'] = '3.1'
                 self.mqttversion = paho.mqtt.client.MQTTv31
-            elif self.config['version'] == '3.1.1':
+            elif config['version'] == '3.1.1':
+                self.active_config['version'] = '3.1.1'
                 self.mqttversion = paho.mqtt.client.MQTTv311
-            elif self.config['version'] == '5':
+            elif config['version'] == '5':
+                self.active_config['version'] = '5'
                 self.mqttversion = paho.mqtt.client.MQTTv5
             else:
                 raise ConfigurationError(f'Invalid MQTT version specified in config ("version" must be one of {mqttversion_choices})')
 
         else:
+            self.active_config['version'] = '3.1.1'
             self.mqttversion = paho.mqtt.client.MQTTv311
 
         transport_choices: list[Literal["tcp", "websockets", "unix"]] = ['tcp', 'websockets', 'unix']
-        if 'transport' in self.config:
-            if self.config['transport'] not in transport_choices:
+        if 'transport' in config:
+            if config['transport'] not in transport_choices:
                 raise ConfigurationError(f'Invalid MQTT transport specified in config ("transport" must be one of {transport_choices})')
-            self.mqtttransport: Literal["tcp", "websockets", "unix"] = self.config['transport']
+            self.active_config['transport'] = config['transport']
         else:
-            self.mqtttransport: Literal["tcp", "websockets", "unix"] = 'tcp'
+            self.active_config['transport'] = 'tcp'
 
-        if 'tls' in self.config:
-            self.mqtttls: Optional[bool] = self.config['tls']
-            if self.mqtttls and self.mqttport == 0:
-                self.mqttport = 8883
+        if 'tls' in config:
+            self.active_config['tls'] = config['tls']
+            if self.active_config['tls'] and self.active_config['port'] == 0:
+                self.active_config['port'] = 8883
         else:
-            self.mqtttls: Optional[bool] = False
-            if self.mqttport == 0:
-                self.mqttport = 1883
+            self.active_config['tls'] = False
+            if self.active_config['port'] == 0:
+                self.active_config['port'] = 1883
 
-        if 'tls_insecure' in self.config:
-            self.mqtttls_insecure: Optional[bool] = self.config['tls_insecure']
+        if 'tls_insecure' in config:
+            self.active_config['tls_insecure'] = config['tls_insecure']
         else:
-            self.mqtttls_insecure: Optional[bool] = False
+            self.active_config['tls_insecure'] = False
 
-        if 'tls_cafile' in self.config:
-            self.mqtttls_cafile: Optional[str] = self.config['tls_cafile']
+        if 'tls_cafile' in config:
+            self.active_config['tls_cafile'] = config['tls_cafile']
         else:
-            self.mqtttls_cafile: Optional[str] = None
+            self.active_config['tls_cafile'] = None
 
-        if 'tls_certfile' in self.config:
-            self.mqtttls_certfile: Optional[str] = self.config['tls_certfile']
+        if 'tls_certfile' in config:
+            self.active_config['tls_certfile'] = config['tls_certfile']
         else:
-            self.mqtttls_certfile: Optional[str] = None
+            self.active_config['tls_certfile'] = None
 
-        if 'tls_keyfile' in self.config:
-            self.mqtttls_keyfile: Optional[str] = self.config['tls_keyfile']
+        if 'tls_keyfile' in config:
+            self.active_config['tls_keyfile'] = config['tls_keyfile']
         else:
-            self.mqtttls_keyfile: Optional[str] = None
+            self.active_config['tls_keyfile'] = None
 
         mqtttls_version_choices: list[str] = ['tlsv1.2', 'tlsv1.1', 'tlsv1']
-        if 'tls_version' in self.config and self.config['tls_version'] is not None:
-            if self.config['tls_version'] == "tlsv1.2":
+        if 'tls_version' in config and config['tls_version'] is not None:
+            if config['tls_version'] == "tlsv1.2":
+                self.active_config['tls_version'] = "tlsv1.2"
                 self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
-            elif self.config['tls_version'] == "tlsv1.1":
+            elif config['tls_version'] == "tlsv1.1":
+                self.active_config['tls_version'] = "tlsv1.1"
                 self.mqtttls_version = ssl.PROTOCOL_TLSv1_1
-            elif self.config['tls_version'] == "tlsv1":
+            elif config['tls_version'] == "tlsv1":
+                self.active_config['tls_version'] = "tlsv1"
                 self.mqtttls_version = ssl.PROTOCOL_TLSv1
             else:
                 raise ConfigurationError(f'Invalid MQTT TLS version specified in config ("tls_version" must be one of {mqtttls_version_choices})')
         else:
+            self.active_config['tls_version'] = "tlsv1.2"
             self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
 
-        if 'ignore_for' in self.config and self.config['ignore_for-for'] is not None:
-            self.ignore_for: int = self.config['ignore_for-for']
+        if 'ignore_for' in config and config['ignore_for-for'] is not None:
+            self.active_config['ignore_for'] = config['ignore_for-for']
         else:
-            self.ignore_for: int = 5
+            self.active_config['ignore_for'] = 5
 
-        if 'republish_on_update' in self.config and self.config['republish_on_update'] is not None:
-            self.republish_on_update: bool = self.config['republish_on_update']
+        if 'republish_on_update' in config and config['republish_on_update'] is not None:
+            self.active_config['republish_on_update'] = config['republish_on_update']
         else:
-            self.republish_on_update: bool = False
+            self.active_config['republish_on_update'] = False
 
-        if 'retain_on_disconnect' in self.config and self.config['retain_on_disconnect'] is not None:
-            self.retain_on_disconnect: bool = self.config['retain_on_disconnect']
+        if 'retain_on_disconnect' in config and config['retain_on_disconnect'] is not None:
+            self.retain_on_disconnect: bool = config['retain_on_disconnect']
         else:
             self.retain_on_disconnect: bool = False
 
-        if 'topic_filter_regex' in self.config and self.config['topic_filter_regex'] is not None:
-            self.topic_filter_regex: Optional[str] = self.config['topic_filter_regex']
+        if 'topic_filter_regex' in config and config['topic_filter_regex'] is not None:
+            self.active_config['topic_filter_regex'] = config['topic_filter_regex']
         else:
-            self.topic_filter_regex: Optional[str] = None
+            self.active_config['topic_filter_regex'] = None
 
-        if 'convert_timezone' in self.config and self.config['convert_timezone'] is not None:
-            self.convert_timezone: Optional[tzinfo] = tz.gettz(self.config['convert_timezone'])
+        if 'convert_timezone' in config and config['convert_timezone'] is not None:
+            self.convert_timezone: Optional[tzinfo] = tz.gettz(config['convert_timezone'])
         else:
             self.convert_timezone: Optional[tzinfo] = datetime.now().astimezone().tzinfo
+        self.active_config['convert_timezone'] = str(self.convert_timezone)
 
-        if 'time_format' in self.config and self.config['time_format'] is not None:
-            self.time_format: Optional[str] = self.config['time_format']
+        if 'time_format' in config and config['time_format'] is not None:
+            self.active_config['time_format'] = config['time_format']
         else:
-            self.time_format: Optional[str] = None
+            self.active_config['time_format'] = None
 
-        if 'locale' in self.config and self.config['locale'] is not None:
-            self.locale: Optional[str] = self.config['locale']
+        if 'locale' in config and config['locale'] is not None:
+            self.active_config['locale'] = config['locale']
             try:
-                locale.setlocale(locale.LC_ALL, self.locale)
-                if self.time_format is None or self.time_format == '':
-                    self.time_format = locale.nl_langinfo(locale.D_T_FMT)
+                locale.setlocale(locale.LC_ALL, self.active_config['locale'])
+                if self.active_config['time_format'] is None or self.active_config['time_format'] == '':
+                    self.active_config['time_format'] = locale.nl_langinfo(locale.D_T_FMT)
             except locale.Error as err:
                 raise ConfigurationError('Invalid locale specified in config ("locale" must be a valid locale)') from err
         else:
-            self.locale: Optional[str] = locale.getlocale()[0]
+            self.active_config['locale'] = locale.getlocale()[0]
 
-        if 'image_format' in self.config and self.config['image_format'] is not None:
-            if self.config['image_format'] in ImageFormat:
-                self.image_format: ImageFormat = ImageFormat(self.config['image_format'])
+        if 'image_format' in config and config['image_format'] is not None:
+            if config['image_format'] in ImageFormat:
+                self.image_format: ImageFormat = ImageFormat(config['image_format'])
             else:
                 raise ConfigurationError(f'Invalid image format specified in config ("image_format" must be one of {[e.value for e in ImageFormat]})')
         else:
             self.image_format: ImageFormat = ImageFormat.PNG
+        self.active_config['image_format'] = self.image_format.value
 
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
                                                      plugin_id=plugin_id,
-                                                     client_id=self.mqttclientid,
+                                                     client_id=self.active_config['clientid'],
                                                      protocol=self.mqttversion,
-                                                     transport=self.mqtttransport,
-                                                     prefix=self.mqttprefix,
-                                                     ignore_for=self.ignore_for,
-                                                     republish_on_update=self.republish_on_update,
+                                                     transport=self.active_config['transport'],
+                                                     prefix=self.active_config['prefix'],
+                                                     ignore_for=self.active_config['ignore_for'],
+                                                     republish_on_update=self.active_config['republish_on_update'],
                                                      retain_on_disconnect=self.retain_on_disconnect,
-                                                     topic_filter_regex=self.topic_filter_regex,
+                                                     topic_filter_regex=self.active_config['topic_filter_regex'],
                                                      convert_timezone=self.convert_timezone,
-                                                     time_format=self.time_format,
+                                                     time_format=self.active_config['time_format'],
                                                      with_raw_json_topic=False,
-                                                     topic_format=self.topic_format,
-                                                     locale=self.locale,
+                                                     topic_format=self.active_config['topic_format'],
+                                                     locale=self.active_config['locale'],
                                                      image_format=self.image_format)
-        if self.mqtttls:
-            if self.mqtttls_insecure:
+        if self.active_config['tls']:
+            if self.active_config['tls_insecure']:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE
             else:
                 cert_required: ssl.VerifyMode = ssl.CERT_REQUIRED
 
-            self.mqtt_client.tls_set(ca_certs=self.mqtttls_certfile, certfile=self.mqtttls_certfile, keyfile=self.mqtttls_keyfile, cert_reqs=cert_required,
+            self.mqtt_client.tls_set(ca_certs=self.active_config['tls_cafile'], certfile=self.active_config['tls_certfile'],
+                                     keyfile=self.active_config['tls_keyfile'], cert_reqs=cert_required,
                                      tls_version=self.mqtttls_version)
-            if self.mqtttls_insecure:
+            if self.active_config['tls_insecure']:
                 self.mqtt_client.tls_insecure_set(True)
-        if self.mqttusername is not None:
-            self.mqtt_client.username_pw_set(username=self.mqttusername, password=self.mqttpassword)
+        if self.active_config['username'] is not None:
+            self.mqtt_client.username_pw_set(username=self.active_config['username'], password=self.active_config['password'])
 
     def startup(self) -> None:
         LOG.info("Starting MQTT plugin")
@@ -263,8 +267,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def _background_connect_loop(self) -> None:
         while not self._stop_event.is_set():
             try:
-                LOG.info('Connecting to MQTT-Server %s:%d', self.mqttbroker, self.mqttport)
-                self.mqtt_client.connect(self.mqttbroker, self.mqttport, self.mqttkeepalive)
+                LOG.info('Connecting to MQTT-Server %s:%d', self.active_config['broker'], self.active_config['port'])
+                self.mqtt_client.connect(self.active_config['broker'], self.active_config['port'], self.active_config['keepalive'])
                 break
             except ConnectionRefusedError as e:
                 LOG.error('Could not connect to MQTT-Server: %s, will retry in 10 seconds', e)
