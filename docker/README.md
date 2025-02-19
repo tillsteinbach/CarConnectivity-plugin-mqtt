@@ -76,6 +76,14 @@ CarConnectivity-MQTT comes with Skoda and Volkswagen connectors preinstalled. If
 ...
 ```
 
+### Troubleshooting
+If you face challenges the WebUI can help you find the problems: [CarConnectivity-plugin-webui](https://github.com/tillsteinbach/CarConnectivity-plugin-webui). Install it with:
+```yml
+environment:
+      - ADDITIONAL_INSTALLS=carconnectivity-plugin-webui
+```
+and add a plugin of `"type": "webui"` to your configuration.
+
 ### Times
 By default the times coming from the car are UTC isoformat. You can convert times to your local timezone by adding `convert-times` to your config. Convert times will use the timezone specified in `TZ` variable.
 You can format times in your local format by adding `timeformat` to your config. This will use the default Date/Time format of your locale setting (`LC_ALL` variable). If you want to set a specific format add e.g. `timeformat '%a %d %b %Y %T'` to your config.
