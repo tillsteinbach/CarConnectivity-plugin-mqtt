@@ -96,9 +96,9 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                 if authenticator is not None:
                     self.active_config['username'], _, self.active_config['password'] = authenticator
                 else:
-                    raise ConfigurationError(f'No credentials found for {self.active_config['broker']} in netrc-file {self.active_config['netrc']}')
+                    raise ConfigurationError(f'No credentials found for {self.active_config["broker"]} in netrc-file {self.active_config['netrc']}')
             except FileNotFoundError as exc:
-                raise ConfigurationError(f'{self.active_config['netrc']} netrc-file was not found. Create it or provide'
+                raise ConfigurationError(f'{self.active_config["netrc"]} netrc-file was not found. Create it or provide'
                                          ' username and password in the config.') from exc
 
         mqttversion_choices: list[str] = ['3.1', '3.1.1', '5']
