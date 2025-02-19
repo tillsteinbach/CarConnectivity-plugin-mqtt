@@ -85,6 +85,11 @@ When using docker-compose configure CarConnectivity-MQTT like that:
 ```bash
 carconnectivity-mqtt carconnectivity.json
 ```
+If you face challenges the WebUI can help you find the problems: [CarConnectivity-plugin-webui](https://github.com/tillsteinbach/CarConnectivity-plugin-webui). Install it with:
+```bash
+pip3 install carconnectivity-plugin-webui
+```
+and add a plugin of `"type": "webui"` to your configuration.
 
 ### Updates
 If you want to update, the easiest way is:
