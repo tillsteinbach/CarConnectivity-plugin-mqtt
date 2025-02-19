@@ -73,7 +73,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         if 'keepalive' in config and config['keepalive'] is not None:
             self.active_config['keepalive'] = config['keepalive']
         else:
-            self.active_config['keepalive'] = 30
+            self.active_config['keepalive'] = 60
 
         if 'username' in config:
             self.active_config['username'] = config['username']

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}MQTT Plugin Status {% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<h2>Connection Status:</h2>
+<table class="table">
+  <tbody>
+    {% if plugin.mqtt_client.is_connected() %}
+    <tr class="table-success">
+    {% else %}
+    <tr class="table-danger">
+      {% endif %}
+          <td>Connection</td>
+          <td>{{ "connected" if plugin.mqtt_client.is_connected() else "unconnected"}}</td>
+      </tr>
+      <tr>
+          <td>Broker</td>
+          <td>{{ plugin.mqtt_client.transport}}://{{ plugin.mqtt_client.host}}:{{ plugin.mqtt_client.port}}</td>
+      </tr>
+      <tr>
+        <td>Client ID</td>
+        <td>{{ plugin.mqtt_client._client_id.decode('utf-8')}}</td>
+      </tr>
+      <tr>
+        <td>TX Queue length</td>
+        <td>{{ plugin.mqtt_client._out_messages|length}}</td>
+      </tr>
+      <tr>
+        <td>RX Queue length</td>
+        <td>{{ plugin.mqtt_client._in_messages|length}}</td>
+      </tr>
+      <tr>
+        <td>Inflight messages</td>
+        <td>{{ plugin.mqtt_client._inflight_messages }}/{{ plugin.mqtt_client._max_inflight_messages }}</td>
+      </tr>
+      <tr>
+        <td>Last message received</td>
+        <td>{{ (monotonic_zero + timedelta(seconds=plugin.mqtt_client._last_msg_in)).replace(microsecond=0) }}</td>
+      </tr>
+      <tr>
+        <td>Last message transmitted</td>
+        <td>{{ (monotonic_zero + timedelta(seconds=plugin.mqtt_client._last_msg_out)).replace(microsecond=0) }}</td>
+      </tr>
+  </tbody>
+</table>
+<h2>Topics:</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Announcing Topic</th>
+    </tr>
+  <tbody>
+      {% for topic in plugin.mqtt_client.topics %}
+      <tr>
+          <td>{{topic}}</td>
+      </tr>
+      {% endfor %}
+  </tbody>
+</table>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Listening on Topic</th>
+    </tr>
+  <tbody>
+      {% for topic in plugin.mqtt_client.writeable_topics %}
+      <tr>
+          <td>{{topic}}</td>
+      </tr>
+      {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
