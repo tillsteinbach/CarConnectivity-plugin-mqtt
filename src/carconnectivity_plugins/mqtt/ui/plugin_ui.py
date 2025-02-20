@@ -25,10 +25,14 @@ class PluginUI(BasePluginUI):
                                                                     template_folder=os.path.dirname(__file__) + '/templates')
         super().__init__(plugin, blueprint=blueprint)
 
+        @self.blueprint.route('/', methods=['GET'])
+        def root():
+            return flask.redirect(flask.url_for('plugins.mqtt.status'))
+
         @self.blueprint.route('/status', methods=['GET'])
         @login_required
         def status():
-            return flask.render_template('status.html', current_app=flask.current_app, plugin=self.plugin,
+            return flask.render_template('mqtt/status.html', current_app=flask.current_app, plugin=self.plugin,
                                          monotonic_zero=datetime.now()-timedelta(seconds=time.monotonic()))
 
     def get_nav_items(self) -> List[Dict[Literal['text', 'url', 'sublinks', 'divider'], Union[str, List]]]:
