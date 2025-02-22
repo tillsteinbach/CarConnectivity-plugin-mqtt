@@ -73,7 +73,7 @@ Create a carconnectivity.json config file like this (Example if you have a Volks
                 "config": {
                     "broker": "192.168.0.123", // Broker hostname or IP address
                     "username": "testuser", // Broker username to login
-                    "password": "testuser", // Broker password to login
+                    "password": "testuser" // Broker password to login
                 }
             }
         ]
