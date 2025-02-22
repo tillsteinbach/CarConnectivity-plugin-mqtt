@@ -29,6 +29,7 @@ In order to connect vehciles from various brands, you need to install connector,
 ```bash
 pip3 install carconnectivity-connector-volkswagen
 pip3 install carconnectivity-connector-skoda
+pip3 install carconnectivity-connector-seatcupra
 ```
 
 ### Install using pipx (alternative)
@@ -97,6 +98,7 @@ If you want to update, the easiest way is:
 pip3 install carconnectivity-plugin-mqtt --upgrade
 pip3 install carconnectivity-connector-volkswagen --upgrade
 pip3 install carconnectivity-connector-skoda --upgrade
+pip3 install carconnectivity-connector-seatcupra --upgrade
 ```
 
 ## With Docker
