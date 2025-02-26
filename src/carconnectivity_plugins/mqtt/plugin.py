@@ -258,9 +258,11 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         LOG.info("Starting MQTT plugin")
         self._stop_event.clear()
         self._background_connect_thread = threading.Thread(target=self._background_connect_loop, daemon=False)
+        self._background_connect_thread.name = 'carconnectivity.plugins.mqtt-background_connect'
         self._background_connect_thread.start()
         self.mqtt_client.loop_start()
         self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=False)
+        self._background_publish_topics_thread.name = 'carconnectivity.plugins.mqtt-background_publish_topics'
         self._background_publish_topics_thread.start()
         LOG.debug("Starting MQTT plugin done")
 
