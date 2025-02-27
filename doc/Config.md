@@ -76,8 +76,8 @@ These are the valid options for the MQTT plugin
                     "topic_filter_regex": "carconnectivity\.0\./garage/WVWAB312[0-9A-Z]+/.*",
                     "convert_timezone": "Europe/Berlin", // Timezone to convert when publishing times
                     "time_format": "%Y-%m-%dT%H:%M:%S%z", // Use custom time format 
-                    "locale": "de_DE" // Locale for conversions
-
+                    "locale": "de_DE", // Locale for conversions
+                    "homeassistant_discovery": true // Publish device auto discovery topic for home assistant
                 }
             }
         ]
