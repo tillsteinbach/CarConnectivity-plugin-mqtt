@@ -581,9 +581,10 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # An attribute is enabled
         if flags & Observable.ObserverEvent.ENABLED:
             if isinstance(element, attributes.GenericAttribute):
-                # For Changeable Attributes, subscribe to the topic and add it to the list of writeable topics
+                # For Changeable Attributes, subscribe to the topic and add it to the list of writeable topics and list of topics
                 if element.is_changeable:
                     self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
+                    self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
                 # For not mutable Attributes, add it to the list of topics
                 else:
                     self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
@@ -715,9 +716,10 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     if self.topic_filter_regex is not None and self.topic_filter_regex.match(attribute_topic):
                         continue
                     if isinstance(attribute, attributes.GenericAttribute):
-                        # if attribute is changeable, subscribe to it and add it to the list of writeable topics
+                        # if attribute is changeable, subscribe to it and add it to the list of writeable topics and list of topics
                         if attribute.is_changeable:
                             self._add_topic(attribute_topic, with_filter=True, subscribe=True, writeable=True)
+                            self._add_topic(attribute_topic, with_filter=True, subscribe=False, writeable=False)
                         # if attribute is not writeable, add it to the list of topics
                         else:
                             self._add_topic(attribute_topic, with_filter=True, subscribe=False, writeable=False)
