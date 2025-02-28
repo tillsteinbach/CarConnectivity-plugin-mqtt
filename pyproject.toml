@@ -46,6 +46,9 @@ plugins = [
     'carconnectivity-plugin-homekit',
     'carconnectivity-plugin-webui',
 ]
+homeassistant = [
+    'carconnectivity-plugin-mqtt_homeassistant',
+]
 
 [project.urls]
 
