@@ -18,10 +18,6 @@ from carconnectivity import errors
 from carconnectivity import attributes, commands
 from carconnectivity.observable import Observable
 from carconnectivity.json_util import ExtendedWithNullEncoder
-from carconnectivity.vehicle import GenericVehicle
-from carconnectivity.drive import ElectricDrive, CombustionDrive
-
-from carconnectivity_plugins.mqtt._version import __version__
 
 SUPPORT_IMAGES = False
 try:
@@ -41,6 +37,8 @@ except ImportError:
 
 if TYPE_CHECKING:
     from typing import Optional, Literal, List, Dict, Any, Set
+
+    from paho.mqtt.client import CallbackOnConnect, CallbackOnDisconnect, CallbackOnSubscribe, CallbackOnMessage
 
     from carconnectivity.carconnectivity import CarConnectivity
 
@@ -87,8 +85,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
                  topic_filter_regex=None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
-                 topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None, image_format: ImageFormat = ImageFormat.PNG,
-                 homeassistant_discovery: bool = False) -> None:
+                 topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None, image_format: ImageFormat = ImageFormat.PNG) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
         self.plugin_id: str = plugin_id
@@ -110,13 +107,15 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.topic_format = topic_format
         self.locale = locale
         self.image_format: ImageFormat = image_format
-        self.homeassistant_discovery: bool = homeassistant_discovery
-        self.homeassistant_discovery_hashes: Dict[str, int] = {}
 
         self.on_connect = self._on_connect_callback
+        self._on_connect_callbacks: Set[CallbackOnConnect] = set()
         self.on_message = self._on_message_callback
+        self._on_message_callbacks: Set[CallbackOnMessage] = set()
         self.on_disconnect = self._on_disconnect_callback
+        self._on_disconnect_callbacks: Set[CallbackOnDisconnect] = set()
         self.on_subscribe = self._on_subscribe_callback
+        self._on_subscribe_callbacks: Set[CallbackOnSubscribe] = set()
 
         if self.republish_on_update:
             flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
@@ -130,306 +129,101 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
 
         self.will_set(topic=f'{self.prefix}/plugins/{self.plugin_id}/connected', qos=1, retain=True, payload=False)
 
-    def _publish_homeassistant_discovery(self) -> None:
-        for vehicle in self.car_connectivity.garage.list_vehicles():
-            if vehicle.enabled:
-                self._publish_homeassistant_discovery_vehicle(vehicle)
-
-    def _publish_homeassistant_discovery_vehicle(self, vehicle: GenericVehicle) -> None:
+    def add_on_connect_callback(self, callback: CallbackOnConnect) -> None:
         """
-        Publish the Home Assistant discovery message.
+        Add a callback to the on_connect event.
 
         Args:
+            callback (CallbackOnConnect): The callback to add.
+
+        Returns:
             None
         """
-        if vehicle.vin is None or vehicle.vin.value is None:
-            raise ValueError('Vehicle VIN is None')
-        vin: str = vehicle.vin.value
-        discovery_topic = f'homeassistant/device/{vin}/config'
-        discovery_message = {
-            'device': {
-                'ids': vin,
-                'sn': vin,
-                'availability_topic': f'{self.prefix}/plugins/{self.plugin_id}/connected',
-                'payload_not_available': 'False',
-                'payload_available': 'True',
-            },
-            'origin': {
-                'name': 'carconnectivity-plugin-mqtt',
-                'sw': __version__,
-                'url': 'https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt'
-            },
-            'cmps': {}
-        }
-        if vehicle.name.enabled and vehicle.name.value is not None:
-            discovery_message['device']['name'] = vehicle.name.value
-        if vehicle.manufacturer.enabled and vehicle.manufacturer.value is not None:
-            discovery_message['device']['mf'] = vehicle.manufacturer.value
-        if vehicle.model.enabled and vehicle.model.value is not None:
-            discovery_message['device']['mdl'] = vehicle.model.value
-        if vehicle.model_year.enabled and vehicle.model_year.value is not None:
-            discovery_message['device']['hw'] = str(vehicle.model_year.value)
-        if vehicle.software is not None and vehicle.software.enabled and vehicle.software.version.enabled and vehicle.software.version.value is not None:
-            discovery_message['device']['sw'] = vehicle.software.version.value
+        self._on_connect_callbacks.add(callback)
 
-        if vehicle.odometer.enabled and vehicle.odometer.value is not None and vehicle.odometer.unit is not None:
-            discovery_message['cmps'][f'{vin}_odometer'] = {
-                'p': 'sensor',
-                'device_class': 'distance',
-                'name': 'Odometer',
-                'state_topic': f'{self.prefix}{vehicle.odometer.get_absolute_path()}',
-                'unit_of_measurement': vehicle.odometer.unit.value,
-                'unique_id': f'{vin}_odometer'
-            }
-        if vehicle.state.enabled and vehicle.state.value is not None:
-            discovery_message['cmps'][f'{vin}_state'] = {
-                'p': 'sensor',
-                'name': 'Vehicle State',
-                'state_topic': f'{self.prefix}{vehicle.state.get_absolute_path()}',
-                'unique_id': f'{vin}_state'
-            }
-        if vehicle.connection_state.enabled and vehicle.connection_state.value is not None:
-            discovery_message['cmps'][f'{vin}_connection_state'] = {
-                'p': 'sensor',
-                'name': 'Connection State',
-                'state_topic': f'{self.prefix}{vehicle.connection_state.get_absolute_path()}',
-                'unique_id': f'{vin}_connection_state'
-            }
-        if vehicle.drives is not None and vehicle.drives.enabled:
-            if vehicle.drives.total_range.enabled and vehicle.drives.total_range.value is not None and vehicle.drives.total_range.unit is not None:
-                discovery_message['cmps'][f'{vin}_total_range'] = {
-                    'p': 'sensor',
-                    'device_class': 'distance',
-                    'name': 'Total Range',
-                    'state_topic': f'{self.prefix}{vehicle.drives.total_range.get_absolute_path()}',
-                    'unit_of_measurement': vehicle.drives.total_range.unit.value,
-                    'unique_id': f'{vin}_total_range'
-                }
-            for drive_id, drive in vehicle.drives.drives.items():
-                if drive.enabled:
-                    if drive.range.enabled and drive.range.value is not None and drive.range.unit is not None:
-                        discovery_message['cmps'][f'{vin}_{drive_id}_range'] = {
-                            'p': 'sensor',
-                            'device_class': 'distance',
-                            'name': f'Range ({drive_id})',
-                            'state_topic': f'{self.prefix}{drive.range.get_absolute_path()}',
-                            'unit_of_measurement': drive.range.unit.value,
-                            'unique_id': f'{vin}_{drive_id}_range'
-                        }
-                    if isinstance(drive, CombustionDrive):
-                        if drive.level.enabled and drive.level.value is not None and drive.level.unit is not None:
-                            discovery_message['cmps'][f'{vin}_{drive_id}_level'] = {
-                                'p': 'sensor',
-                                'name': f'Tank ({drive_id})',
-                                'state_topic': f'{self.prefix}{drive.level.get_absolute_path()}',
-                                'unit_of_measurement': drive.level.unit.value,
-                                'unique_id': f'{vin}_{drive_id}_level'
-                            }
-                    elif isinstance(drive, ElectricDrive):
-                        if drive.level.enabled and drive.level.value is not None and drive.level.unit is not None:
-                            discovery_message['cmps'][f'{vin}_{drive_id}_level'] = {
-                                'p': 'sensor',
-                                'device_class': 'battery',
-                                'name': f'SoC ({drive_id})',
-                                'state_topic': f'{self.prefix}{drive.level.get_absolute_path()}',
-                                'unit_of_measurement': drive.level.unit.value,
-                                'unique_id': f'{vin}_{drive_id}_level'
-                            }
-                        if drive.battery is not None and drive.battery.enabled:
-                            if drive.battery.temperature.enabled and drive.battery.temperature.value is not None and drive.battery.temperature.unit is not None:
-                                discovery_message['cmps'][f'{vin}_{drive_id}_battery_temperature'] = {
-                                    'p': 'sensor',
-                                    'device_class': 'temperature',
-                                    'name': f'Battery Temperature ({drive_id})',
-                                    'state_topic': f'{self.prefix}{drive.battery.temperature.get_absolute_path()}',
-                                    'unit_of_measurement': drive.battery.temperature.unit.value,
-                                    'unique_id': f'{vin}_{drive_id}_battery_temperature'
-                                }
-        if vehicle.doors is not None and vehicle.doors.enabled:
-            if vehicle.doors.open_state.enabled and vehicle.doors.open_state.value is not None:
-                discovery_message['cmps'][f'{vin}_open_state'] = {
-                    'p': 'binary_sensor',
-                    'name': 'Open State',
-                    'state_topic': f'{self.prefix}{vehicle.doors.open_state.get_absolute_path()}',
-                    'payload_off': 'closed',
-                    'payload_on': 'open',
-                    'unique_id': f'{vin}_open_state'
-                }
-            if vehicle.doors.lock_state.enabled and vehicle.doors.lock_state.value is not None:
-                discovery_message['cmps'][f'{vin}_lock_state'] = {
-                    'p': 'binary_sensor',
-                    'name': 'Lock State',
-                    'state_topic': f'{self.prefix}{vehicle.doors.lock_state.get_absolute_path()}',
-                    'payload_off': 'unlocked',
-                    'payload_on': 'locked',
-                    'unique_id': f'{vin}_lock_state'
-                }
-            for door_id, door in vehicle.doors.doors.items():
-                if door.enabled:
-                    if door.open_state.enabled and door.open_state.value is not None:
-                        discovery_message['cmps'][f'{vin}_{door_id}_open_state'] = {
-                            'p': 'binary_sensor',
-                            'name': f'Open State ({door_id})',
-                            'state_topic': f'{self.prefix}{door.open_state.get_absolute_path()}',
-                            'payload_off': 'closed',
-                            'payload_on': 'open',
-                            'unique_id': f'{vin}_{door_id}_open_state'
-                        }
-                    if door.lock_state.enabled and door.lock_state.value is not None:
-                        discovery_message['cmps'][f'{vin}_{door_id}_lock_state'] = {
-                            'p': 'binary_sensor',
-                            'name': f'Lock State ({door_id})',
-                            'state_topic': f'{self.prefix}{door.lock_state.get_absolute_path()}',
-                            'payload_off': 'unlocked',
-                            'payload_on': 'locked',
-                            'unique_id': f'{vin}_{door_id}_lock_state'
-                        }
-        if vehicle.windows is not None and vehicle.windows.enabled:
-            if vehicle.windows.open_state.enabled and vehicle.windows.open_state.value is not None:
-                discovery_message['cmps'][f'{vin}_open_state'] = {
-                    'p': 'binary_sensor',
-                    'name': 'Open State',
-                    'state_topic': f'{self.prefix}{vehicle.windows.open_state.get_absolute_path()}',
-                    'payload_off': 'closed',
-                    'payload_on': 'open',
-                    'unique_id': f'{vin}_open_state'
-                }
-            for window_id, window in vehicle.windows.windows.items():
-                if window.enabled:
-                    if window.open_state.enabled and window.open_state.value is not None:
-                        discovery_message['cmps'][f'{vin}_{window_id}_open_state'] = {
-                            'p': 'binary_sensor',
-                            'name': f'Open State ({window_id})',
-                            'state_topic': f'{self.prefix}{window.open_state.get_absolute_path()}',
-                            'payload_off': 'closed',
-                            'payload_on': 'open',
-                            'unique_id': f'{vin}_{window_id}_open_state'
-                        }
-        if vehicle.lights is not None and vehicle.lights.enabled:
-            if vehicle.lights.light_state.enabled and vehicle.lights.light_state.value is not None:
-                discovery_message['cmps'][f'{vin}_state'] = {
-                    'p': 'sensor',
-                    'name': 'Light State',
-                    'state_topic': f'{self.prefix}{vehicle.lights.light_state.get_absolute_path()}',
-                    'payload_off': 'off',
-                    'payload_on': 'on',
-                    'unique_id': f'{vin}_state'
-                }
-            for light_id, light in vehicle.lights.lights.items():
-                if light.enabled:
-                    if light.light_state.enabled and light.light_state.value is not None:
-                        discovery_message['cmps'][f'{vin}_{light_id}_state'] = {
-                            'p': 'sensor',
-                            'name': f'Light State ({light_id})',
-                            'state_topic': f'{self.prefix}{light.light_state.get_absolute_path()}',
-                            'payload_off': 'off',
-                            'payload_on': 'on',
-                            'unique_id': f'{vin}_{light_id}_state'
-                        }
-        if vehicle.position.enabled:
-            if vehicle.position.latitude.enabled and vehicle.position.latitude.value is not None \
-                    and vehicle.position.longitude.enabled and vehicle.position.longitude.value is not None \
-                    and vehicle.position.latitude.unit is not None and vehicle.position.longitude.unit is not None:
-                discovery_message['cmps'][f'{vin}_latitude'] = {
-                    'p': 'sensor',
-                    'name': 'Position Latitude',
-                    'state_topic': f'{self.prefix}{vehicle.position.latitude.get_absolute_path()}',
-                    'unit_of_measurement': vehicle.position.latitude.unit.value,
-                    'unique_id': f'{vin}_latitude'
-                }
-                discovery_message['cmps'][f'{vin}_longitude'] = {
-                    'p': 'sensor',
-                    'name': 'Position Longitude',
-                    'state_topic': f'{self.prefix}{vehicle.position.longitude.get_absolute_path()}',
-                    'unit_of_measurement': vehicle.position.longitude.unit.value,
-                    'unique_id': f'{vin}_longitude'
-                }
-            if vehicle.position.position_type.enabled and vehicle.position.position_type.value is not None:
-                discovery_message['cmps'][f'{vin}_position_type'] = {
-                    'p': 'sensor',
-                    'name': 'Position Type',
-                    'state_topic': f'{self.prefix}{vehicle.position.position_type.get_absolute_path()}',
-                    'unique_id': f'{vin}_position_type'
-                }
-        if vehicle.climatization.enabled:
-            if vehicle.climatization.state.enabled and vehicle.climatization.state.value is not None:
-                discovery_message['cmps'][f'{vin}_climatization_state'] = {
-                    'p': 'sensor',
-                    'name': 'Climatization State',
-                    'state_topic': f'{self.prefix}{vehicle.climatization.state.get_absolute_path()}',
-                    'unique_id': f'{vin}_climatization_state'
-                }
-            if vehicle.climatization.commands.enabled and 'start-stop' in vehicle.climatization.commands.commands:
-                discovery_message['cmps'][f'{vin}_climatization_start_stop'] = {
-                    'p': 'switch',
-                    'name': 'Start/Stop Climatization',
-                    'state_topic': f'{self.prefix}{vehicle.climatization.state.get_absolute_path()}',
-                    'command_topic': f'{self.prefix}{vehicle.climatization.commands.commands['start-stop'].get_absolute_path()}_writetopic',
-                    'payload_on': 'start',
-                    'payload_off': 'stop',
-                    'state_on': ['heating', 'cooling', 'ventilation'],
-                    'state_off': 'off',
-                    'unique_id': f'{vin}_climatization_start_stop'
-                }
-        if vehicle.outside_temperature.enabled and vehicle.outside_temperature.value is not None and vehicle.outside_temperature.unit is not None:
-            discovery_message['cmps'][f'{vin}_outside_temperature'] = {
-                'p': 'sensor',
-                'device_class': 'temperature',
-                'name': 'Outside Temperature',
-                'state_topic': f'{self.prefix}{vehicle.outside_temperature.get_absolute_path()}',
-                'unit_of_measurement': vehicle.outside_temperature.unit.value,
-                'unique_id': f'{vin}_outside_temperature'
-            }
-        if vehicle.maintenance.enabled:
-            if vehicle.maintenance.inspection_due_at.enabled and vehicle.maintenance.inspection_due_at.value is not None:
-                discovery_message['cmps'][f'{vin}_inspection_due_at'] = {
-                    'p': 'sensor',
-                    'device_class': 'timestamp',
-                    'name': 'Inspection Due At',
-                    'state_topic': f'{self.prefix}{vehicle.maintenance.inspection_due_at.get_absolute_path()}',
-                    'unique_id': f'{vin}_inspection_due_at'
-                }
-            if vehicle.maintenance.inspection_due_after.enabled and vehicle.maintenance.inspection_due_after.value is not None \
-                    and vehicle.maintenance.inspection_due_after.unit is not None:
-                discovery_message['cmps'][f'{vin}_inspection_due_after'] = {
-                    'p': 'sensor',
-                    'device_class': 'distance',
-                    'name': 'Inspection Due After',
-                    'state_topic': f'{self.prefix}{vehicle.maintenance.inspection_due_after.get_absolute_path()}',
-                    'unit_of_measurement': vehicle.maintenance.inspection_due_after.unit.value,
-                    'unique_id': f'{vin}_inspection_due_after'
-                }
-            if vehicle.maintenance.oil_service_due_at.enabled and vehicle.maintenance.oil_service_due_at.value is not None:
-                discovery_message['cmps'][f'{vin}_oil_service_due_at'] = {
-                    'p': 'sensor',
-                    'device_class': 'timestamp',
-                    'name': 'Oil Service Due At',
-                    'state_topic': f'{self.prefix}{vehicle.maintenance.oil_service_due_at.get_absolute_path()}',
-                    'unique_id': f'{vin}_oil_service_due_at'
-                }
-            if vehicle.maintenance.oil_service_due_after.enabled and vehicle.maintenance.oil_service_due_after.value is not None \
-                    and vehicle.maintenance.oil_service_due_after.unit is not None:
-                discovery_message['cmps'][f'{vin}_oil_service_due_after'] = {
-                    'p': 'sensor',
-                    'device_class': 'distance',
-                    'name': 'Oil Service Due After',
-                    'state_topic': f'{self.prefix}{vehicle.maintenance.oil_service_due_after.get_absolute_path()}',
-                    'unit_of_measurement': vehicle.maintenance.oil_service_due_after.unit.value,
-                    'unique_id': f'{vin}_oil_service_due_after'
-                }
-        if SUPPORT_IMAGES and self.image_format == ImageFormat.PNG:
-            if vehicle.images.enabled:
-                for image_id, image in vehicle.images.images.items():
-                    if image.enabled and image.value is not None:
-                        discovery_message['cmps'][f'{vin}_{image_id}_image'] = {
-                            'p': 'entity_picture',
-                            'name': f'Image ({image_id})',
-                            'topic': f'{self.prefix}{image.get_absolute_path()}',
-                            'unique_id': f'{vin}_{image_id}_image'
-                        }
-        if vin not in self.homeassistant_discovery_hashes or self.homeassistant_discovery_hashes[vin] != hash(json.dumps(discovery_message)):
-            self.homeassistant_discovery_hashes[vin] = hash(json.dumps(discovery_message))
-            self.publish(topic=discovery_topic, qos=1, retain=False, payload=json.dumps(discovery_message, indent=4))
+    def remove_on_connect_callback(self, callback: CallbackOnConnect) -> None:
+        """
+        Remove a callback from the on_connect event.
+
+        Args:
+            callback (CallbackOnConnect): The callback to remove.
+
+        Returns:
+            None
+        """
+        self._on_connect_callbacks.remove(callback)
+
+    def add_on_message_callback(self, callback: CallbackOnMessage) -> None:
+        """
+        Add a callback to the on_message event.
+
+        Args:
+            callback (CallbackOnMessage): The callback to add.
+
+        Returns:
+            None
+        """
+        self._on_message_callbacks.add(callback)
+
+    def remove_on_message_callback(self, callback: CallbackOnMessage) -> None:
+        """
+        Remove a callback from the on_message event.
+
+        Args:
+            callback (CallbackOnMessage): The callback to remove.
+
+        Returns:
+            None
+        """
+        self._on_message_callbacks.remove(callback)
+
+    def add_on_disconnect_callback(self, callback: CallbackOnDisconnect) -> None:
+        """
+        Add a callback to the on_disconnect event.
+
+        Args:
+            callback (CallbackOnDisconnect): The callback to add.
+
+        Returns:
+            None
+        """
+        self._on_disconnect_callbacks.add(callback)
+
+    def remove_on_disconnect_callback(self, callback: CallbackOnDisconnect) -> None:
+        """
+        Remove a callback from the on_disconnect event.
+
+        Args:
+            callback (CallbackOnDisconnect): The callback to remove.
+
+        Returns:
+            None
+        """
+        self._on_disconnect_callbacks.remove(callback)
+
+    def add_on_subscribe_callback(self, callback: CallbackOnSubscribe) -> None:
+        """
+        Add a callback to the on_subscribe event.
+
+        Args:
+            callback (CallbackOnSubscribe): The callback to add.
+
+        Returns:
+            None
+        """
+        self._on_subscribe_callbacks.add(callback)
+
+    def remove_on_subscribe_callback(self, callback: CallbackOnSubscribe) -> None:
+        """
+        Remove a callback from the on_subscribe event.
+
+        Args:
+            callback (CallbackOnSubscribe): The callback to remove.
+
+        Returns:
+            None
+        """
+        self._on_subscribe_callbacks.remove(callback)
 
     # pylint: disable-next=too-many-branches
     def _add_topic(self, topic: str, with_filter: bool = True, subscribe: bool = True, writeable: bool = False) -> None:
@@ -588,8 +382,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 # For not mutable Attributes, add it to the list of topics
                 else:
                     self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
-            if self.homeassistant_discovery:
-                self._publish_homeassistant_discovery()
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
         elif ((flags & Observable.ObserverEvent.VALUE_CHANGED)
                 or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED))) \
@@ -689,10 +481,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        del mqttc  # unused
-        del obj  # unused
-        del flags  # unused
-        del properties
         # reason_code 0 means success
         if reason_code == 0:
             LOG.info('Connected to MQTT broker')
@@ -726,10 +514,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     # if attribute has a value, publish it
                     if attribute.value is not None:
                         self._publish_element(attribute)
-            # publish homeassistant discovery message
-            if self.homeassistant_discovery:
-                self.subscribe('homeassistant/status', qos=1)
-                self._publish_homeassistant_discovery()
         # Handle different reason codes
         elif reason_code == 128:
             LOG.error('Could not connect (%s): Unspecified error', reason_code)
@@ -773,6 +557,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             LOG.error('Could not connect (%s): Connection rate exceeded', reason_code)
         else:
             LOG.error('Could not connect (%s)', reason_code)
+        for callback in self._on_connect_callbacks:
+            callback(mqttc, obj, flags, reason_code, properties)
 
     # pylint: disable-next=too-many-branches, too-many-arguments, too-many-positional-arguments
     def _on_disconnect_callback(self, client, userdata, flags, reason_code, properties) -> None:  # noqa: C901
@@ -789,10 +575,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        del client
-        del properties
-        del flags
-
         if reason_code == 0:
             LOG.info('Client successfully disconnected')
         elif reason_code == 4:
@@ -805,6 +587,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             LOG.error('Client disconnected: Maximum connect time')
         else:
             LOG.error('Client unexpectedly disconnected (%s), trying to reconnect', reason_code)
+        for callback in self._on_disconnect_callbacks:
+            callback(client, userdata, flags, reason_code, properties)
 
     # pylint: disable-next=too-many-arguments, too-many-positional-arguments
     def _on_subscribe_callback(self, mqttc, obj, mid, reason_codes, properties) -> None:
@@ -821,14 +605,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        del mqttc  # unused
-        del obj  # unused
-        del properties  # unused
         if any(x in [0, 1, 2] for x in reason_codes):
             self.last_subscribe = datetime.now(tz=timezone.utc)
             LOG.debug('sucessfully subscribed to topic of id %d', mid)
         else:
             LOG.error('Subscribe was not successfull (%s)', ', '.join(reason_codes))
+        for callback in self._on_subscribe_callbacks:
+            callback(mqttc, obj, mid, reason_codes, properties)
 
     # pylint: disable-next=too-many-branches, too-many-statements
     def _on_message_callback(self, mqttc, obj, msg) -> None:  # noqa: C901
@@ -855,8 +638,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        del mqttc  # unused
-        del obj  # unused
         # Ignore messages that are within the ignore_for delta of the last subscribe if ignore_for is set
         if self.ignore_for > 0 and self.last_subscribe is not None and (datetime.now(timezone.utc) - self.last_subscribe) < timedelta(seconds=self.ignore_for):
             LOG.info('ignoring message from broker as it is within "ignore-for" delta of %ds', self.ignore_for)
@@ -870,9 +651,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=True)
                 self.car_connectivity.fetch_all()
                 self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=False)
-        elif msg.topic == 'homeassistant/status':
-            if self.homeassistant_discovery and msg.payload.lower() == b'online':
-                self._publish_homeassistant_discovery()
         # handle any other message
         else:
             if msg.topic.startswith(self.prefix):
@@ -973,11 +751,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                         error_message = f'Trying to change item that is not a changeable attribute and not using _writetopic{msg.topic}: {msg.payload}'
                         self._set_error(code=CarConnectivityErrors.MESSAGE_NOT_UNDERSTOOD, message=error_message)
                         LOG.error(error_message)
-            # Only react to messages that start with the prefix
-            else:
+            # Only react to messages that start with the prefix, when there are callbacks we cannot assume to know what messages the client is subscribed to
+            elif len(self._on_message_callbacks) == 0:
                 error_message = f'I don\'t understand message {msg.topic}: {msg.payload}'
                 self._set_error(code=CarConnectivityErrors.ATTRIBUTE_NOT_CHANGEABLE, message=error_message)
                 LOG.error(error_message)
+        for callback in self._on_message_callbacks:
+            callback(mqttc, obj, msg)
 
 
 class CarConnectivityErrors(Enum):

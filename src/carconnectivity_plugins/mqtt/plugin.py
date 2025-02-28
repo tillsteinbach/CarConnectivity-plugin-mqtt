@@ -224,11 +224,6 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             self.image_format: ImageFormat = ImageFormat.PNG
         self.active_config['image_format'] = self.image_format.value
 
-        if 'homeassistant_discovery' in config:
-            self.active_config['homeassistant_discovery'] = config['homeassistant_discovery']
-        else:
-            self.active_config['homeassistant_discovery'] = False
-
         self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
                                                      plugin_id=plugin_id,
                                                      client_id=self.active_config['clientid'],
@@ -244,8 +239,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                                                      with_raw_json_topic=False,
                                                      topic_format=self.active_config['topic_format'],
                                                      locale=self.active_config['locale'],
-                                                     image_format=self.image_format,
-                                                     homeassistant_discovery=self.active_config['homeassistant_discovery'])
+                                                     image_format=self.image_format)
         if self.active_config['tls']:
             if self.active_config['tls_insecure']:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE
