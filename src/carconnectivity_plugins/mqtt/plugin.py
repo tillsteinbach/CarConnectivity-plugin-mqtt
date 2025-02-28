@@ -35,6 +35,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
+        self._healthy = False
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
@@ -264,6 +265,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=False)
         self._background_publish_topics_thread.name = 'carconnectivity.plugins.mqtt-background_publish_topics'
         self._background_publish_topics_thread.start()
+        self._healthy = True
         LOG.debug("Starting MQTT plugin done")
 
     def _background_connect_loop(self) -> None:
@@ -304,3 +306,6 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
 
     def get_type(self) -> str:
         return "carconnectivity-plugin-mqtt"
+
+    def is_healthy(self) -> bool:
+        return self._healthy and super().is_healthy()
