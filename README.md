@@ -105,6 +105,26 @@ pip3 install carconnectivity-connector-seatcupra --upgrade
 There is also a Docker image to easily host CarConnectivity-MQTT: [See on Dockerhub](https://hub.docker.com/r/tillsteinbach/carconnectivity-mqtt)
 
 ## Other
+### Home Assistant
+To make Auto Discovery and further features available in Home Assistant also install[CarConnectivity-plugin-mqtt_homeassistant](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt_homeassistant)
+```bash
+pip3 install carconnectivity-plugin-mqtt_homeassistant
+```
+and add it to your config:
+```json
+            {
+                "type": "mqtt", // Definition for the MQTT Connection
+                "config": {
+                    "broker": "192.168.0.123", // Broker hostname or IP address
+                    "username": "testuser", // Broker username to login
+                    "password": "testuser" // Broker password to login
+                }
+            },
+            {
+                "type": "mqtt_homeassistant", // Definition for the MQTT Home Assistant Compatibility
+                "config": {}
+            }
+```
 ### Times
 By default the times coming from the car are UTC isoformat. You can convert times to your local timezone by adding `convert-times` to your config. Convert times will use the timezone specified in `TZ` variable.
 You can format times in your local format by adding `timeformat` to your config. This will use the default Date/Time format of your locale setting (`LC_ALL` variable). If you want to set a specific format add e.g. `timeformat '%a %d %b %Y %T'` to your config.
