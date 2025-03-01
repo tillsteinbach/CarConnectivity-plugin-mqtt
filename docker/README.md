@@ -75,6 +75,27 @@ CarConnectivity-MQTT comes with Skoda and Volkswagen connectors preinstalled. If
       - ADDITIONAL_INSTALLS=carconnectivity-plugin-abrp
 ...
 ```
+## Other
+### Home Assistant
+To make Auto Discovery and further features available in Home Assistant also install [CarConnectivity-plugin-mqtt_homeassistant](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt_homeassistant)
+```bash
+pip3 install carconnectivity-plugin-mqtt_homeassistant
+```
+and add it to your config:
+```json
+            {
+                "type": "mqtt", // Definition for the MQTT Connection
+                "config": {
+                    "broker": "192.168.0.123", // Broker hostname or IP address
+                    "username": "testuser", // Broker username to login
+                    "password": "testuser" // Broker password to login
+                }
+            },
+            {
+                "type": "mqtt_homeassistant", // Definition for the MQTT Home Assistant Compatibility
+                "config": {}
+            }
+```
 
 ### Troubleshooting
 If you face challenges the WebUI can help you find the problems: [CarConnectivity-plugin-webui](https://github.com/tillsteinbach/CarConnectivity-plugin-webui). Install it with:
@@ -90,7 +111,7 @@ You can format times in your local format by adding `timeformat` to your config.
 ```yml
 ...
   carconnectivity-mqtt:
-    image: "tillsteinbach/carconnectivity-mqtt:edge"
+    image: "tillsteinbach/carconnectivity-mqtt:latest"
     environment:
       - TZ=Europe/Berlin
       - LANG=de_DE
@@ -99,6 +120,15 @@ You can format times in your local format by adding `timeformat` to your config.
 ```
 ### Using Miles or Farenheit
 CarConnectivity will guess your desired temperature or range/speed unit based on the systems locale. If it does not match what you want, you can set a different locale in your `carconnectivity.json` json config.
+
+### Pre-Releases
+Pre releases are taged like versions, e.g. `tillsteinbach/carconnectivity-mqtt:0.4a1`, if you want to be at the current development version you can use the `tillsteinbach/carconnectivity-mqtt:edge` tag. Do not use this in a productive environment as it may break suddenly.
+
+For the `ADDITIONAL_INSTALLS` pre releases can be installed with
+```yml
+environment:
+      - ADDITIONAL_INSTALLS=--pre carconnectivity-plugin-webui carconnectivity-plugin-mqtt-homeassistant
+```
 
 ### Without Docker
 If you don't want to use docker you can obtain carconnectivity-mqtt also as a stand-alone application from [PyPI](https://pypi.org/project/carconnectivity-plugin-mqtt/). Just install instead using:
