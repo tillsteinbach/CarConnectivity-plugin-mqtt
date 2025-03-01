@@ -60,7 +60,7 @@ When using docker-compose configure CarConnectivity-MQTT like that:
 ```yml
 services:
   carconnectivity-mqtt:
-    image: "tillsteinbach/carconnectivity-mqtt:edge"
+    image: "tillsteinbach/carconnectivity-mqtt:latest"
     volumes:
       - /path/to/your/config/carconnectivity.json:/carconnectivity.json
 ```
@@ -70,7 +70,7 @@ CarConnectivity-MQTT comes with Skoda and Volkswagen connectors preinstalled. If
 ```yml
 ...
   carconnectivity-mqtt:
-    image: "tillsteinbach/carconnectivity-mqtt:edge"
+    image: "tillsteinbach/carconnectivity-mqtt:latest"
     environment:
       - ADDITIONAL_INSTALLS=carconnectivity-plugin-abrp
 ...
@@ -111,6 +111,9 @@ carconnectivity-mqtt carconnectivity.json
 - Volkswagen ID.3 Modelyear 2021
 - Volkswagen Passat GTE Modelyear 2021
 - Skoda Enyaq RD Modelyear 2025
+- Seat Leon
+- Cupra Born
+- Seat Mii
 
 ## Reporting Issues
 Please feel free to open an issue at [GitHub Issue page](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/issues) to report problems you found.
