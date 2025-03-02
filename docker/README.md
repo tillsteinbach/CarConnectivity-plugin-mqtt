@@ -66,13 +66,13 @@ services:
 ```
 
 ### Connectors & Plugins
-CarConnectivity-MQTT comes with Skoda and Volkswagen connectors preinstalled. If you need support for further connectors you can use the `ADDITIONAL_INSTALLS` variable to install additional plugins at runtime, e.g.:
+CarConnectivity-MQTT comes with all officially maintained connectors and plugins preinstalled. If you need support for further connectors you can use the `ADDITIONAL_INSTALLS` variable to install additional connectors and plugins at runtime, e.g.:
 ```yml
 ...
   carconnectivity-mqtt:
     image: "tillsteinbach/carconnectivity-mqtt:latest"
     environment:
-      - ADDITIONAL_INSTALLS=carconnectivity-plugin-abrp
+      - ADDITIONAL_INSTALLS=carconnectivity-connector-smartcar
 ...
 ```
 ## Other
@@ -127,7 +127,7 @@ Pre releases are taged like versions, e.g. `tillsteinbach/carconnectivity-mqtt:0
 For the `ADDITIONAL_INSTALLS` pre releases can be installed with
 ```yml
 environment:
-      - ADDITIONAL_INSTALLS=--pre carconnectivity-plugin-webui carconnectivity-plugin-mqtt-homeassistant
+      - ADDITIONAL_INSTALLS=--pre carconnectivity-connector-smartcar
 ```
 
 ### Without Docker
