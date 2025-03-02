@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.4a11",
+    "carconnectivity>=0.4",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
@@ -40,14 +40,19 @@ connectors = [
     'carconnectivity-connector-volkswagen',
     'carconnectivity-connector-skoda',
     'carconnectivity-connector-tronity',
+    'carconnectivity-connector-seatcupra',
 ]
 plugins = [
+    'carconnectivity-plugin-mqtt_homeassistant',
     'carconnectivity-plugin-abrp',
     'carconnectivity-plugin-homekit',
     'carconnectivity-plugin-webui',
 ]
 homeassistant = [
     'carconnectivity-plugin-mqtt_homeassistant',
+]
+all = [
+    'carconnectivity-plugin-mqtt[connectors,plugins]',
 ]
 
 [project.urls]
