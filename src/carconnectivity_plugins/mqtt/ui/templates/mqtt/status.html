@@ -14,7 +14,7 @@
     <tr class="table-danger">
       {% endif %}
           <td>Connection</td>
-          <td>{{ "connected" if plugin.mqtt_client.is_connected() else "unconnected"}}</td>
+          <td>{{  plugin.connection_state.value.value if plugin.connection_state.enabled else "unknown"}}</td>
       </tr>
       <tr>
           <td>Broker</td>
