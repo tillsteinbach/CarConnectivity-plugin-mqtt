@@ -15,6 +15,9 @@ import paho.mqtt.client
 
 from carconnectivity.errors import ConfigurationError
 from carconnectivity.util import config_remove_credentials
+from carconnectivity.attributes import EnumAttribute
+from carconnectivity.enums import ConnectionState
+
 from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient, TopicFormat, ImageFormat
 from carconnectivity_plugins.mqtt._version import __version__
@@ -35,7 +38,9 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     """
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
-        self._healthy = False
+
+        self.connection_state: EnumAttribute = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
+                                                             value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
@@ -225,8 +230,13 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             self.image_format: ImageFormat = ImageFormat.PNG
         self.active_config['image_format'] = self.image_format.value
 
-        self.mqtt_client = CarConnectivityMQTTClient(car_connectivity=self.car_connectivity,
-                                                     plugin_id=plugin_id,
+        if 'with_full_json' in config and config['with_full_json'] is not None:
+            self.active_config['with_full_json'] = config['with_full_json']
+        else:
+            self.active_config['with_full_json'] = False
+
+        self.mqtt_client = CarConnectivityMQTTClient(plugin=self,
+                                                     car_connectivity=self.car_connectivity,
                                                      client_id=self.active_config['clientid'],
                                                      protocol=self.mqttversion,
                                                      transport=self.active_config['transport'],
@@ -240,7 +250,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                                                      with_raw_json_topic=False,
                                                      topic_format=self.active_config['topic_format'],
                                                      locale=self.active_config['locale'],
-                                                     image_format=self.image_format)
+                                                     image_format=self.image_format,
+                                                     with_full_json=self.active_config['with_full_json'])
         if self.active_config['tls']:
             if self.active_config['tls_insecure']:
                 cert_required: ssl.VerifyMode = ssl.CERT_NONE
@@ -265,7 +276,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         self._background_publish_topics_thread = threading.Thread(target=self._background_publish_topics_loop, daemon=False)
         self._background_publish_topics_thread.name = 'carconnectivity.plugins.mqtt-background_publish_topics'
         self._background_publish_topics_thread.start()
-        self._healthy = True
+        self.healthy._set_value(value=True)  # pylint: disable=protected-access
         LOG.debug("Starting MQTT plugin done")
 
     def _background_connect_loop(self) -> None:
@@ -307,5 +318,5 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def get_type(self) -> str:
         return "carconnectivity-plugin-mqtt"
 
-    def is_healthy(self) -> bool:
-        return self._healthy and super().is_healthy()
+    def get_name(self) -> str:
+        return "MQTT Plugin"
