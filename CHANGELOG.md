@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.4.2] - 2025-03-04
+### Fixed
+- Fixed publishing to broken topic on disconnect
+- Fixed locale settings on docker container
+
 ## [0.4.1] - 2025-03-02
 ### Changed
 - Docker container now comes with all officially maintained plugins and connectors pre-installed
