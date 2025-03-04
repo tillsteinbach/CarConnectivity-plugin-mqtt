@@ -25,7 +25,7 @@ FROM ubuntu:22.04 AS baserunner
 
 ARG DEBIAN_FRONTEND="noninteractive"
 
-RUN apt-get update && apt-get install --no-install-recommends -y locales gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
+RUN apt-get update && apt-get install --no-install-recommends -y locales-all gpg gpg-agent software-properties-common && add-apt-repository ppa:deadsnakes/ppa && apt-get update && \
     apt-get install --no-install-recommends -y python3.12 python3.12-venv wget && \
     apt-get install --no-install-recommends -y libpq5 libjpeg8 zlib1g && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
