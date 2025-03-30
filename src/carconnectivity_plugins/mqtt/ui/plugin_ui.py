@@ -21,8 +21,8 @@ class PluginUI(BasePluginUI):
     A user interface class for the MQTT plugin in the Car Connectivity application.
     """
     def __init__(self, plugin: BasePlugin):
-        blueprint: Optional[flask.Blueprint] = flask.Blueprint(name='mqtt', import_name='carconnectivity-plugin-mqtt', url_prefix='/mqtt',
-                                                                    template_folder=os.path.dirname(__file__) + '/templates')
+        blueprint: Optional[flask.Blueprint] = flask.Blueprint(name=plugin.id, import_name='carconnectivity-plugin-mqtt', url_prefix=f'/{plugin.id}',
+                                                               template_folder=os.path.dirname(__file__) + '/templates')
         super().__init__(plugin, blueprint=blueprint)
 
         @self.blueprint.route('/', methods=['GET'])
