@@ -77,7 +77,8 @@ These are the valid options for the MQTT plugin
                     "convert_timezone": "Europe/Berlin", // Timezone to convert when publishing times
                     "time_format": "%Y-%m-%dT%H:%M:%S%z", // Use custom time format 
                     "locale": "de_DE", // Locale for conversions, will be used instead of system locale
-                    "with_full_json": true // Publish all data as a single json under prefix/full_json
+                    "with_full_json": true, // Publish all data as a single json under prefix/full_json
+                    "image_format": "txt" // Image format to use for images, txt (for ascii art) or png (default)
                 }
             }
         ]
