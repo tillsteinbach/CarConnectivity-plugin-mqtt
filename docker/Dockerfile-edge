@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/root/.cache/pip pip3 install --no-cache-dir wheel
 RUN --mount=type=cache,target=/root/.cache/pip pip3 install --no-cache-dir cryptography
 RUN --mount=type=cache,target=/root/.cache/pip pip3 install --pre --no-cache-dir ./carconnectivity-mqtt[all]
 
-FROM ubuntu:22.04 AS baserunner
+FROM ubuntu:24.04 AS baserunner
 
 ARG DEBIAN_FRONTEND="noninteractive"
 

@@ -21,7 +21,7 @@ RUN pip3 install --no-cache-dir wheel
 
 RUN pip3 install --no-cache carconnectivity-plugin-mqtt[all]==${VERSION}
 
-FROM ubuntu:22.04 AS baserunner
+FROM ubuntu:24.04 AS baserunner
 
 ARG DEBIAN_FRONTEND="noninteractive"
 
