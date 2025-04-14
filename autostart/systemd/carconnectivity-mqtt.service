@@ -1,0 +1,13 @@
+[Unit]
+Description=CarConnectivity-mqtt
+After=network-online.target
+
+[Service]
+Type=simple
+# change the username and commandline parameters here:
+User=yourunixusername
+ExecStart=/usr/bin/python -m carconnectivity-mqtt /home/yourunixusername/carconnectivity/carconnectivity.json
+# Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
