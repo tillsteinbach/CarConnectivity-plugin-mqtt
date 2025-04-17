@@ -19,6 +19,7 @@ from carconnectivity import attributes, commands
 from carconnectivity.observable import Observable
 from carconnectivity.json_util import ExtendedWithNullEncoder
 from carconnectivity.enums import ConnectionState
+from carconnectivity.attributes import FloatAttribute
 
 SUPPORT_IMAGES = False
 try:
@@ -336,6 +337,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
     def _publish_element(self, element: Any) -> None:
         if element.enabled:
             value, unit = element.in_locale(locale=self.locale)
+            if value is not None and isinstance(element, FloatAttribute) and element.precision is not None:
+                precision_digits = 0
+                precision_tmp = element.precision
+                while precision_tmp < 1:
+                    precision_digits += 1
+                    precision_tmp *= 10
+                value = round(value, precision_digits)
             converted_value = self.convert_value(value)
             LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
             if self.topic_format == TopicFormat.SIMPLE:
