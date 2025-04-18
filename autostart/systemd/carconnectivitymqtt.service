@@ -6,7 +6,7 @@ After=network-online.target
 Type=simple
 # change the username and commandline parameters here:
 User=yourunixusername
-ExecStart=/usr/bin/python -m carconnectivity-mqtt /home/yourunixusername/carconnectivity/carconnectivity.json
+ExecStart=/home/yourunixusername/.local/bin/carconnectivity-mqtt /home/yourunixusername/carconnectivity/carconnectivity.json
 # Restart=on-failure
 
 [Install]
