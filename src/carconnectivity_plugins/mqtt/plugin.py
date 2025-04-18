@@ -181,8 +181,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             self.active_config['tls_version'] = "tlsv1.2"
             self.mqtttls_version: ssl._SSLMethod = ssl.PROTOCOL_TLSv1_2
 
-        if 'ignore_for' in config and config['ignore_for-for'] is not None:
-            self.active_config['ignore_for'] = config['ignore_for-for']
+        if 'ignore_for' in config and config['ignore_for'] is not None:
+            self.active_config['ignore_for'] = config['ignore_for']
         else:
             self.active_config['ignore_for'] = 5
 
