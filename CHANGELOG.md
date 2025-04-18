@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.7.1] - 2025-04-18
+### Fixed
+- Fixed ignore_for config option
+
 ## [0.7] - 2025-04-17
 ### Added
 - Example for autostart with systemd
@@ -62,7 +66,8 @@ All notable changes to this project will be documented in this file.
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.7...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.7.1
 [0.7]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.7
 [0.6]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.6
 [0.5]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.5
