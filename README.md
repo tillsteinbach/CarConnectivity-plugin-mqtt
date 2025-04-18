@@ -106,7 +106,10 @@ There is also a Docker image to easily host CarConnectivity-MQTT: [See on Docker
 
 ## Other
 ### Home Assistant
-To make Auto Discovery and further features available in Home Assistant also install[CarConnectivity-plugin-mqtt_homeassistant](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt_homeassistant)
+The easiest way to work with home assistant is to use the prepackaged [carconnectivity-addon](https://github.com/Pulpyyyy/carconnectivity-addon).
+
+#### Manual install with Home Assistant
+To make Auto Discovery and further features available in Home Assistant also install [CarConnectivity-plugin-mqtt_homeassistant](https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt_homeassistant)
 ```bash
 pip3 install carconnectivity-plugin-mqtt_homeassistant
 ```
