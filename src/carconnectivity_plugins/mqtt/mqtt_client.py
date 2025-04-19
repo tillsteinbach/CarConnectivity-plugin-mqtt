@@ -672,7 +672,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         if self.ignore_for > 0 and self.last_subscribe is not None and (datetime.now(timezone.utc) - self.last_subscribe) < timedelta(seconds=self.ignore_for):
             LOG.info('ignoring message from broker as it is within "ignore-for" delta of %ds', self.ignore_for)
         # Ignore empty messages
-        elif len(msg.payload) == 0:
+        elif len(msg.payload) == 0:  # pylint: disable=too-many-nested-blocks
             LOG.debug('ignoring empty message')
         # handle any other message
         else:
