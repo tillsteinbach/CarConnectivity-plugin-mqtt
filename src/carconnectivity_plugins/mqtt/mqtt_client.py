@@ -486,7 +486,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
     def _on_connect_callback(self, mqttc, obj, flags, reason_code, properties) -> None:  # noqa: C901
         """
         Callback for connection to the MQTT broker.
-        On successful connection it will subscribe to the force update topic and all writeable topics.
+        On successful connection it will subscribe to all writeable topics.
         It will also publish all topics that are already there.
 
         Args:
@@ -514,11 +514,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             self.car_connectivity.add_observer(self._on_carconnectivity_event, flags, priority=Observable.ObserverPriority.USER_MID)
 
             self.plugin.connection_state._set_value(value=ConnectionState.CONNECTED)  # pylint: disable=protected-access
-            # subsribe to the force update topic
-            force_update_topic: str = f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic'
-            self.subscribe(force_update_topic, qos=2)
-            if force_update_topic not in self.topics:
-                self._add_topic(topic=force_update_topic, with_filter=True, writeable=True, subscribe=False)
 
             # Subscribe again to all writeable topics after a reconnect
             for writeable_topic in self.writeable_topics:
@@ -659,8 +654,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         if ignore_for is set it will ignore messages that are within the ignore_for delta of the last subscribe. This helps to prevent
         receiving messages that are sent by the client itself and relayed by the broker due to the retain flag.
 
-        If the message is a force update message it will trigger a fetch_all on the car connectivity object.
-
         If the message is a write message it will try to set the value of the attribute that is addressed in the message.
         If the attribute is not changeable it will set an error.
         If the attribute is not found it will set an error.
@@ -681,13 +674,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # Ignore empty messages
         elif len(msg.payload) == 0:
             LOG.debug('ignoring empty message')
-        # handle force upate message
-        elif msg.topic == f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate_writetopic':  # pylint: disable=too-many-nested-blocks
-            if msg.payload.lower() == b'True'.lower():
-                LOG.info('Update triggered by MQTT message')
-                self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=True)
-                self.car_connectivity.fetch_all()
-                self.publish(topic=f'{self.prefix}/plugins/{self.plugin_id}/carconnectivityForceUpdate', qos=2, payload=False)
         # handle any other message
         else:
             if msg.topic.startswith(self.prefix):
