@@ -60,7 +60,7 @@ These are the valid options for the MQTT plugin
                     "password": "testuser", // Broker password to login
                     "netrc": "~/.netr", // netrc file if to be used for passwords
                     "clientid": "my_client", // Client id if should not be generated
-                    "prefix": "carconnectivity/0", // prefix for published topics
+                    "prefix": "carconnectivity/0", // prefix for published topics. Default: "carconnectivity/0"
                     "keepalive": 60, // MQTT keepalive value. Default: 60
                     "version": "3.1", // MQTT Protocol version to use ["3.1", "3.1.1", "5"]. Default: 3.1.1
                     "transport": "tcp", // Transport protocol ["tcp", "websockets", "unix"]. Default: tcp
