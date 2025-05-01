@@ -408,7 +408,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
         elif flags & Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
                 and isinstance(element, attributes.GenericAttribute):
-            LOG.debug('%s%s, value is diabled', self.prefix, element.get_absolute_path())
+            LOG.debug('%s%s, value is disabled', self.prefix, element.get_absolute_path())
             if self.topic_format == TopicFormat.SIMPLE:
                 self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload='')
             elif self.topic_format == TopicFormat.JSON:
