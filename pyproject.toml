@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.7",
+    "carconnectivity>=0.7.1",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
