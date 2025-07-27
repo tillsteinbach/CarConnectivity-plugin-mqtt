@@ -290,6 +290,9 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             except ConnectionRefusedError as e:
                 LOG.error('Could not connect to MQTT-Server: %s, will retry in 10 seconds', e)
                 self._stop_event.wait(10)
+            except OSError as e:
+                LOG.error('Could not connect to MQTT-Server: %s, will retry in 10 seconds', e)
+                self._stop_event.wait(10)
 
     def _background_publish_topics_loop(self) -> None:
         while not self._stop_event.is_set():
