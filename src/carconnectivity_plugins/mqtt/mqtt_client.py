@@ -369,6 +369,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                              payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
+        else:
+            raise AttributeError("Trying to publish an element that is not enabled.")
 
     def _on_carconnectivity_event(self, element, flags) -> None:
         """
@@ -400,11 +402,6 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 # For not mutable Attributes, add it to the list of topics
                 else:
                     self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
-        # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
-        elif ((flags & Observable.ObserverEvent.VALUE_CHANGED)
-                or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED))) \
-                and isinstance(element, attributes.GenericAttribute):
-            self._publish_element(element)
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
         elif flags & Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
                 and isinstance(element, attributes.GenericAttribute):
@@ -415,6 +412,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True, payload='')
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
+        # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
+        elif ((flags & Observable.ObserverEvent.VALUE_CHANGED)
+                or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED))) \
+                and isinstance(element, attributes.GenericAttribute):
+            self._publish_element(element)
 
     def convert_value(self, value):  # pylint: disable=too-many-return-statements
         """
