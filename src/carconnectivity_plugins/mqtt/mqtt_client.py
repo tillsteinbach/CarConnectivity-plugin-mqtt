@@ -334,6 +334,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             pass
         return super().disconnect(reasoncode, properties)
 
+    # pylint: disable-next=too-many-branches
     def _publish_element(self, element: Any) -> None:
         if element.enabled:
             value, unit = element.in_locale(locale=self.locale)
