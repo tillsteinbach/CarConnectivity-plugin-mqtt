@@ -394,17 +394,16 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.has_changes = True
         topic: str = f'{self.prefix}{element.get_absolute_path()}'
         # An attribute is enabled
-        if flags & Observable.ObserverEvent.ENABLED:
-            if isinstance(element, attributes.GenericAttribute):
-                # For Changeable Attributes, subscribe to the topic and add it to the list of writeable topics and list of topics
-                if element.is_changeable:
-                    self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
-                    self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
-                # For not mutable Attributes, add it to the list of topics
-                else:
-                    self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
+        if flags & Observable.ObserverEvent.ENABLED and isinstance(element, attributes.GenericAttribute):
+            # For Changeable Attributes, subscribe to the topic and add it to the list of writeable topics and list of topics
+            if element.is_changeable:
+                self._add_topic(topic=topic, with_filter=True, subscribe=True, writeable=True)
+                self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
+            # For not mutable Attributes, add it to the list of topics
+            else:
+                self._add_topic(topic=topic, with_filter=True, subscribe=False, writeable=False)
         # When an attribute is disabled and retain_on_disconnect is not set, publish an empty message to the topic to remove it
-        elif flags & Observable.ObserverEvent.DISABLED and not self.retain_on_disconnect \
+        elif (flags & Observable.ObserverEvent.DISABLED) and not self.retain_on_disconnect \
                 and isinstance(element, attributes.GenericAttribute):
             LOG.debug('%s%s, value is disabled', self.prefix, element.get_absolute_path())
             if self.topic_format == TopicFormat.SIMPLE:
@@ -416,7 +415,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
         elif ((flags & Observable.ObserverEvent.VALUE_CHANGED)
                 or (self.republish_on_update and (flags & Observable.ObserverEvent.UPDATED))) \
-                and isinstance(element, attributes.GenericAttribute):
+                and isinstance(element, attributes.GenericAttribute) and element.enabled:
             self._publish_element(element)
 
     def convert_value(self, value):  # pylint: disable=too-many-return-statements
@@ -507,14 +506,14 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             LOG.info('Connected to MQTT broker')
             # register callback for carconnectivity events
             if self.republish_on_update:
-                flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
-                                                   | Observable.ObserverEvent.ENABLED
-                                                   | Observable.ObserverEvent.DISABLED)
+                observer_flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
+                                                            | Observable.ObserverEvent.ENABLED
+                                                            | Observable.ObserverEvent.DISABLED)
             else:
-                flags = (Observable.ObserverEvent.VALUE_CHANGED
-                         | Observable.ObserverEvent.ENABLED
-                         | Observable.ObserverEvent.DISABLED)
-            self.car_connectivity.add_observer(self._on_carconnectivity_event, flags, priority=Observable.ObserverPriority.USER_MID)
+                observer_flags = (Observable.ObserverEvent.VALUE_CHANGED
+                                  | Observable.ObserverEvent.ENABLED
+                                  | Observable.ObserverEvent.DISABLED)
+            self.car_connectivity.add_observer(self._on_carconnectivity_event, observer_flags, priority=Observable.ObserverPriority.USER_MID)
 
             self.plugin.connection_state._set_value(value=ConnectionState.CONNECTED)  # pylint: disable=protected-access
 
