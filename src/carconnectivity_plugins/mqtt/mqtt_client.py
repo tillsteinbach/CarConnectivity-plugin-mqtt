@@ -21,19 +21,19 @@ from carconnectivity.json_util import ExtendedWithNullEncoder
 from carconnectivity.enums import ConnectionState
 from carconnectivity.attributes import FloatAttribute
 
-SUPPORT_IMAGES = False
+SUPPORT_IMAGES = False  # pylint: disable=invalid-name
 try:
     from PIL import Image
     import io
     from carconnectivity import image_util  # pylint: disable=ungrouped-imports
-    SUPPORT_IMAGES = True
+    SUPPORT_IMAGES = True  # pylint: disable=invalid-name
 except ImportError:
     pass
 
-SUPPORT_ASCII_IMAGES = False
+SUPPORT_ASCII_IMAGES = False  # pylint: disable=invalid-name
 try:
     import ascii_magic  # pylint: disable=unused-import # noqa: F401
-    SUPPORT_ASCII_IMAGES = True
+    SUPPORT_ASCII_IMAGES = True  # pylint: disable=invalid-name
 except ImportError:
     pass
 
