@@ -15,7 +15,7 @@ jobs:
       matrix:
         compose-file: [docker-compose.yml]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Build the docker-compose stack
       run: docker compose -f docker/test/${{ matrix.compose-file }} up -d
     - name: Container Status
