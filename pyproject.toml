@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.8",
+    "carconnectivity>=0.8.1",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Utilities",
     "Topic :: System :: Monitoring",
     "Topic :: Home Automation"
