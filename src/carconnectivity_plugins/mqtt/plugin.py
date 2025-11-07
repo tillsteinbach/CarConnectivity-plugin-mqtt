@@ -22,6 +22,33 @@ from carconnectivity_plugins.base.plugin import BasePlugin
 from carconnectivity_plugins.mqtt.mqtt_client import CarConnectivityMQTTClient, TopicFormat, ImageFormat
 from carconnectivity_plugins.mqtt._version import __version__
 
+# pylint: disable=duplicate-code
+SUPPORT_IMAGES: bool = False  # pylint: disable=invalid-name
+SUPPORT_IMAGES_STR: str = ""  # pylint: disable=invalid-name
+try:
+    import PIL # pylint: disable=unused-import # noqa_F401
+    SUPPORT_IMAGES = True  # pylint: disable=invalid-name
+except ImportError as exc:
+    if str(exc) == "No module named 'PIL'":
+        SUPPORT_IMAGES_STR = str(exc) + " (cannot find pillow library)"  # pylint: disable=invalid-name
+    else:
+        SUPPORT_IMAGES_STR = str(exc)  # pylint: disable=invalid-name
+
+SUPPORT_ASCII_IMAGES = False  # pylint: disable=invalid-name
+SUPPORT_ASCII_IMAGES_STR: str = ""  # pylint: disable=invalid-name
+try:
+    import ascii_magic  # pylint: disable=unused-import # noqa_F401
+    import shutil  # pylint: disable=unused-import # noqa_F401
+    SUPPORT_ASCII_IMAGES = True  # pylint: disable=invalid-name
+except ImportError as exc:
+    if str(exc) == "No module named 'ascii_magic'":
+        SUPPORT_ASCII_IMAGES_STR = str(exc) + " (cannot find ascii_magic library)"  # pylint: disable=invalid-name
+    elif str(exc) == "No module named 'shutil'":
+        SUPPORT_ASCII_IMAGES_STR = str(exc) + " (cannot find shutil library)"  # pylint: disable=invalid-name
+    else:
+        SUPPORT_ASCII_IMAGES_STR = str(exc)  # pylint: disable=invalid-name
+# pylint: enable=duplicate-code
+
 if TYPE_CHECKING:
     from typing import Dict, Optional, Literal
     from carconnectivity.carconnectivity import CarConnectivity
@@ -319,6 +346,12 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
 
     def get_version(self) -> str:
         return __version__
+
+    def get_features(self) -> dict[str, tuple[bool, str]]:
+        features: dict[str, tuple[bool, str]] = {}
+        features['Images'] = (SUPPORT_IMAGES, SUPPORT_IMAGES_STR)
+        features['ASCII Images'] = (SUPPORT_ASCII_IMAGES, SUPPORT_ASCII_IMAGES_STR)
+        return features
 
     def get_type(self) -> str:
         return "carconnectivity-plugin-mqtt"
