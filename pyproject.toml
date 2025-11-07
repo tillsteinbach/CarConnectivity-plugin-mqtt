@@ -14,12 +14,14 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.8.1",
+    "carconnectivity>=0.9",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
 readme = "README.md"
-license = { file = "LICENSE" }
+license-files = [
+    "LICENSE",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: MIT License",
