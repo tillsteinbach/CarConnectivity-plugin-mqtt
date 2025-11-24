@@ -101,6 +101,15 @@ pip3 install carconnectivity-connector-skoda --upgrade
 pip3 install carconnectivity-connector-seatcupra --upgrade
 ```
 
+If you want to try pre-releases (e.g. alpha releases) you can do so by
+```bash
+pip3 install --pre carconnectivity-connector-volkswagen
+```
+or with an exact version like
+```bash
+pip3 install carconnectivity-connector-volkswagen==0.9.2a1
+```
+
 ## With Docker
 There is also a Docker image to easily host CarConnectivity-MQTT: [See on Dockerhub](https://hub.docker.com/r/tillsteinbach/carconnectivity-mqtt)
 
