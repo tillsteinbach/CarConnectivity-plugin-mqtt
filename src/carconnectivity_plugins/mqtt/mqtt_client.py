@@ -10,7 +10,7 @@ import json
 from re import Pattern
 
 
-from paho.mqtt.client import Client
+from paho.mqtt.client import Client, MQTTMessageInfo
 from paho.mqtt.reasoncodes import ReasonCode
 from paho.mqtt.properties import Properties
 from paho.mqtt.enums import MQTTProtocolVersion, CallbackAPIVersion, MQTTErrorCode
@@ -290,7 +290,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if topicstopic not in self.topics:
                 self._add_topic(topic=topicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.topics)
-            self.publish(topic=topicstopic, qos=1, retain=True, payload=content)
+            if self.topic_filter_regex is None or not self.topic_filter_regex.match(topicstopic):
+                self.publish(topic=topicstopic, qos=1, retain=True, payload=content)
             self.topics_changed = False
 
         # Publish the list of writeable topics if it has changed
@@ -301,7 +302,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if writeabletopicstopic not in self.topics:
                 self._add_topic(topic=writeabletopicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.writeable_topics)
-            self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content)
+            if self.topic_filter_regex is None or not self.topic_filter_regex.match(writeabletopicstopic):
+                self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content)
             self.writeable_topics_changed = False
 
     def connect(self, *args, **kwargs) -> MQTTErrorCode:
@@ -328,9 +330,10 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         try:
             self.plugin.connection_state._set_value(value=ConnectionState.DISCONNECTED)  # pylint: disable=protected-access
             # absolutely make sure disconnected message is sent out by publishing it again and wait for publish
-            disconect_publish = self.publish(topic=f'{self.prefix}{self.plugin.connection_state.get_absolute_path()}', qos=1, retain=True,
-                                             payload=ConnectionState.DISCONNECTED.value)
-            disconect_publish.wait_for_publish()
+            topic: str = f'{self.prefix}{self.plugin.connection_state.get_absolute_path()}'
+            if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                disconect_publish: MQTTMessageInfo = self.publish(topic=topic, qos=1, retain=True, payload=ConnectionState.DISCONNECTED.value)
+                disconect_publish.wait_for_publish()
         except RuntimeError:
             pass
         return super().disconnect(reasoncode, properties)
@@ -349,8 +352,10 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             converted_value = self.convert_value(value)
             LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
             if self.topic_format == TopicFormat.SIMPLE:
-                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
-                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload=converted_value)
+                topic: str = f'{self.prefix}{element.get_absolute_path()}'
+                if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
+                    self.publish(topic=topic, qos=1, retain=True, payload=converted_value)
             elif self.topic_format == TopicFormat.JSON:
                 result_dict: Dict[str, Any] = {}
                 result_dict['val'] = converted_value
@@ -366,9 +371,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     result_dict['upd'] = converted_time_str
                 if element.unit is not None:
                     result_dict['uni'] = unit
-                # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
-                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True,
-                             payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
+                topic: str = f'{self.prefix}{element.get_absolute_path()}_json'
+                if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
+                    self.publish(topic=topic, qos=1, retain=True,
+                                 payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
         else:
@@ -408,9 +415,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 and isinstance(element, attributes.GenericAttribute):
             LOG.debug('%s%s, value is disabled', self.prefix, element.get_absolute_path())
             if self.topic_format == TopicFormat.SIMPLE:
-                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}', qos=1, retain=True, payload='')
+                topic: str = f'{self.prefix}{element.get_absolute_path()}'
+                if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    self.publish(topic=topic, qos=1, retain=True, payload='')
             elif self.topic_format == TopicFormat.JSON:
-                self.publish(topic=f'{self.prefix}{element.get_absolute_path()}_json', qos=1, retain=True, payload='')
+                topic: str = f'{self.prefix}{element.get_absolute_path()}_json'
+                if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    self.publish(topic=topic, qos=1, retain=True, payload='')
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
         # If the value of an attribute has changed or the attribute was updated and republish_on_update is set publish the new value
