@@ -7,6 +7,7 @@ import logging
 from enum import Enum
 from datetime import datetime, timedelta, tzinfo, timezone
 import json
+from re import Pattern
 
 
 from paho.mqtt.client import Client
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
     from carconnectivity_plugins.mqtt.plugin import Plugin
 
 
-LOG = logging.getLogger("carconnectivity.plugins.mqtt")
+LOG: logging.Logger = logging.getLogger("carconnectivity.plugins.mqtt")
 
 
 class TopicFormat(Enum):
@@ -75,7 +76,7 @@ class ImageFormat(Enum):
     TXT = 'txt'
     PNG = 'png'
 
-    def __str__(self):
+    def __str__(self) -> Literal['txt'] | Literal['png']:
         return self.value
 
 
@@ -88,12 +89,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                  protocol: MQTTProtocolVersion = MQTTProtocolVersion.MQTTv311,
                  transport: Literal["tcp", "websockets", "unix"] = 'tcp',
                  prefix: Optional[str] = 'carconnectivity/0', ignore_for: int = 0, republish_on_update=False, retain_on_disconnect=False,
-                 topic_filter_regex=None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
+                 topic_filter_regex: Optional[Pattern] = None, convert_timezone: Optional[tzinfo] = None, time_format=None, with_raw_json_topic=False,
                  topic_format: TopicFormat = TopicFormat.SIMPLE, locale: Optional[str] = None, image_format: ImageFormat = ImageFormat.PNG,
                  with_full_json: bool = False) -> None:
         super().__init__(callback_api_version=CallbackAPIVersion.VERSION2, client_id=client_id, transport=transport, protocol=protocol)
         self.car_connectivity: CarConnectivity = car_connectivity
-        self.plugin = plugin
+        self.plugin: Plugin = plugin
         self.plugin_id: str = plugin.id
         self.prefix: str = prefix or 'carconnectivity/0'
         self.has_error: Optional[bool] = None
@@ -105,13 +106,13 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.writeable_topics_changed = False
         self.republish_on_update: bool = republish_on_update
         self.retain_on_disconnect: bool = retain_on_disconnect
-        self.topic_filter_regex = topic_filter_regex
+        self.topic_filter_regex: Optional[Pattern] = topic_filter_regex
         self.convert_timezone: Optional[tzinfo] = convert_timezone
         self.time_format: Optional[str] = time_format
         self.has_changes = False
-        self.with_raw_json_topic = with_raw_json_topic
-        self.topic_format = topic_format
-        self.locale = locale
+        self.with_raw_json_topic: bool = with_raw_json_topic
+        self.topic_format: TopicFormat = topic_format
+        self.locale: Optional[str] = locale
         self.image_format: ImageFormat = image_format
         self.with_full_json: bool = with_full_json
 

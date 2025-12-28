@@ -8,6 +8,7 @@ import logging
 import netrc
 import locale
 import ssl
+import re
 from datetime import datetime, tzinfo
 from dateutil import tz
 
@@ -224,7 +225,10 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             self.retain_on_disconnect: bool = False
 
         if 'topic_filter_regex' in config and config['topic_filter_regex'] is not None:
-            self.active_config['topic_filter_regex'] = config['topic_filter_regex']
+            try:
+                self.active_config['topic_filter_regex'] = re.compile(config['topic_filter_regex'])
+            except re.error as err:
+                raise ConfigurationError(f'Invalid topic_filter_regex specified in config: {str(err)}') from err
         else:
             self.active_config['topic_filter_regex'] = None
 
