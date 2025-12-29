@@ -444,6 +444,8 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             return value
         if isinstance(value, (list)):
             return ', '.join([str(item.value) if isinstance(item, Enum) else str(item) for item in value])
+        if isinstance(value, dict):
+            return ', '.join([str(key) + ': ' + (str(item.value) if isinstance(item, Enum) else str(item)) for key, item in value.items()])
         if isinstance(value, Enum):
             return value.value
         if isinstance(value, datetime):
