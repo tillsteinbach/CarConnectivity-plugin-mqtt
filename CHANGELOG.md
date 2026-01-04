@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.9] - 2026-01-04
+### Added
+- Support for initializing attributes on startup form static entries in the configuration
+
+### Fixed
+- Fixes MQTT topic filter regex
+
+Note: This plugin is required for compatibility with CarConnectivity version 0.11 and higher.
+
 ## [0.8.1] - 2025-11-25
 ### Fixed
 - MQTT Docker image now contains latest volkswagen connector that fixes the login
@@ -89,7 +98,8 @@ All notable changes to this project will be documented in this file.
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.8.1...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.9...HEAD
+[0.9]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9
 [0.8.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.8.1
 [0.8]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.8
 [0.7.4]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.7.4
