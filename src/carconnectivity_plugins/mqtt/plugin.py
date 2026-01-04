@@ -67,8 +67,8 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
     def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
         BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
 
-        self.connection_state: EnumAttribute = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
-                                                             value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
+        self.connection_state: EnumAttribute[ConnectionState] = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
+                                                                              value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
 
         self._background_connect_thread: Optional[threading.Thread] = None
         self._background_publish_topics_thread: Optional[threading.Thread] = None
