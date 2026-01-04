@@ -64,8 +64,9 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
         car_connectivity (CarConnectivity): An instance of CarConnectivity.
         config (Dict): Configuration dictionary containing connection details.
     """
-    def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:  # pylint: disable=too-many-branches, too-many-statements
-        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG)
+    # pylint: disable-next=too-many-branches, too-many-statements
+    def __init__(self, plugin_id: str, car_connectivity: CarConnectivity, config: Dict, initialization: Optional[Dict] = None) -> None:
+        BasePlugin.__init__(self, plugin_id=plugin_id, car_connectivity=car_connectivity, config=config, log=LOG, initialization=initialization)
 
         self.connection_state: EnumAttribute[ConnectionState] = EnumAttribute(name="connection_state", parent=self, value_type=ConnectionState,
                                                                               value=ConnectionState.DISCONNECTED, tags={'plugin_custom'})
