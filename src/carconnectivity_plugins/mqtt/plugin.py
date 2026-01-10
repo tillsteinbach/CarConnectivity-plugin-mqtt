@@ -252,6 +252,15 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                     self.active_config['time_format'] = locale.nl_langinfo(locale.D_T_FMT)
             except locale.Error as err:
                 raise ConfigurationError(f'Invalid locale specified in config ("locale" must be a valid locale): {str(err)}', ) from err
+        elif 'locale' in self.car_connectivity.active_config and self.car_connectivity.active_config['locale'] is not None:
+            self.active_config['locale'] = self.car_connectivity.active_config['locale']
+            try:
+                locale.setlocale(locale.LC_ALL, self.active_config['locale'])
+                if 'time_format' in self.car_connectivity.active_config \
+                        and (self.car_connectivity.active_config['time_format'] is None or self.car_connectivity.active_config['time_format'] == ''):
+                    self.active_config['time_format'] = locale.nl_langinfo(locale.D_T_FMT)
+            except locale.Error as err:
+                raise ConfigurationError(f'Invalid locale specified in carConnectivity config ("locale" must be a valid locale): {str(err)}', ) from err
         else:
             self.active_config['locale'] = locale.getlocale()[0]
 
