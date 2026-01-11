@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.9.1] - 2026-01-11
+### Changed
+- Compatibility for Carconnectivity 11.5
+
 ## [0.9] - 2026-01-04
 ### Added
 - Support for initializing attributes on startup form static entries in the configuration

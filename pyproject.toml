@@ -14,7 +14,7 @@ authors = [
     { name = "Till Steinbach" }
 ]
 dependencies = [
-    "carconnectivity>=0.11.4",
+    "carconnectivity>=0.11.5",
     "paho-mqtt~=2.1.0",
     "python-dateutil~=2.9.0"
 ]
@@ -40,18 +40,18 @@ classifiers = [
 
 [project.optional-dependencies]
 connectors = [
-    'carconnectivity-connector-volkswagen>=0.10',
-    'carconnectivity-connector-skoda>=0.11',
-    'carconnectivity-connector-seatcupra>=0.5',
-    'carconnectivity-connector-tronity>=0.7',
+    'carconnectivity-connector-volkswagen>=0.10.1',
+    'carconnectivity-connector-skoda>=0.11.7',
+    'carconnectivity-connector-seatcupra>=0.5.1',
+    'carconnectivity-connector-tronity>=0.7.1',
 ]
 plugins = [
     'carconnectivity-plugin-mqtt>=0.9',
-    'carconnectivity-plugin-mqtt_homeassistant>=0.5',
-    'carconnectivity-plugin-abrp>=0.8',
-    'carconnectivity-plugin-homekit>=0.7',
-    'carconnectivity-plugin-webui>=0.6',
-    'carconnectivity-plugin-database>=0.1',
+    'carconnectivity-plugin-mqtt_homeassistant>=0.5.1',
+    'carconnectivity-plugin-abrp>=0.8.1',
+    'carconnectivity-plugin-homekit>=0.7.4',
+    'carconnectivity-plugin-webui>=0.7',
+    'carconnectivity-plugin-database>=0.3',
 ]
 homeassistant = [
     'carconnectivity-plugin-mqtt_homeassistant>=0.5',
