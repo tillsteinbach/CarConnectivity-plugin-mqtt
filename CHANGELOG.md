@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.10] - 2026-02-06
+### Added
+- Support for MQTT v5 properties in published messages, including content type and content encoding for JSON payloads
+- Messages that exceed the maximum message given by the server are now logged as errors and not published to the broker, to avoid issues with oversized messages
+- If the server asks for a lower keepalive than the one configured in the plugin, this is now logged as an error and the client disconnects to avoid issues with the connection being closed by the broker due to keepalive timeouts
+
 ## [0.9.2] - 2026-01-23
 ### Changed
 - Compatibility for Carconnectivity 11.6
@@ -106,7 +112,8 @@ Note: This plugin is required for compatibility with CarConnectivity version 0.1
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.9.2...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10...HEAD
+[0.10]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10
 [0.9.2]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9.2
 [0.9.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9.1
 [0.9]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9
