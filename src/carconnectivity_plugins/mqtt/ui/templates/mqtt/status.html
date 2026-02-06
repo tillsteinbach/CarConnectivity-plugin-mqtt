@@ -25,6 +25,10 @@
         <td>{{ plugin.mqtt_client._client_id.decode('utf-8')}}</td>
       </tr>
       <tr>
+        <td>Max packet size</td>
+        <td>{{ plugin.mqtt_client.max_packet_size }} bytes</td>
+      </tr>
+      <tr>
         <td>TX Queue length</td>
         <td>{{ plugin.mqtt_client._out_messages|length}}</td>
       </tr>
