@@ -10,9 +10,10 @@ import json
 from re import Pattern
 
 
-from paho.mqtt.client import Client, MQTTMessageInfo
+from paho.mqtt.client import Client, MQTTMessageInfo, _encode_payload
 from paho.mqtt.reasoncodes import ReasonCode
 from paho.mqtt.properties import Properties
+from paho.mqtt.packettypes import PacketTypes
 from paho.mqtt.enums import MQTTProtocolVersion, CallbackAPIVersion, MQTTErrorCode
 
 from carconnectivity import errors
@@ -115,6 +116,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         self.locale: Optional[str] = locale
         self.image_format: ImageFormat = image_format
         self.with_full_json: bool = with_full_json
+        self.max_message_size: int = 268435456
 
         self.on_connect = self._on_connect_callback
         self._on_connect_callbacks: Set[CallbackOnConnect] = set()
@@ -291,7 +293,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 self._add_topic(topic=topicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.topics)
             if self.topic_filter_regex is None or not self.topic_filter_regex.match(topicstopic):
-                self.publish(topic=topicstopic, qos=1, retain=True, payload=content)
+                content_bytes = _encode_payload(content)
+                if len(content_bytes) > self.max_message_size:
+                    LOG.error("The list of topics is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the list of topics.",
+                              len(content_bytes), self.max_message_size)
+                else:
+                    self.publish(topic=topicstopic, qos=1, retain=True, payload=content_bytes)
             self.topics_changed = False
 
         # Publish the list of writeable topics if it has changed
@@ -303,7 +310,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                 self._add_topic(topic=writeabletopicstopic, with_filter=True, writeable=False, subscribe=False)
             content = ',\n'.join(self.writeable_topics)
             if self.topic_filter_regex is None or not self.topic_filter_regex.match(writeabletopicstopic):
-                self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content)
+                content_bytes = _encode_payload(content)
+                if len(content_bytes) > self.max_message_size:
+                    LOG.error("The list of writeable topics is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the list of "
+                              "writeable topics.", len(content_bytes), self.max_message_size)
+                else:
+                    self.publish(topic=writeabletopicstopic, qos=1, retain=True, payload=content_bytes)
             self.writeable_topics_changed = False
 
     def connect(self, *args, **kwargs) -> MQTTErrorCode:
@@ -354,6 +366,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if self.topic_format == TopicFormat.SIMPLE:
                 topic: str = f'{self.prefix}{element.get_absolute_path()}'
                 if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    content_bytes = _encode_payload(str(converted_value))
+                    if len(content_bytes) > self.max_message_size:
+                        LOG.error("The value for topic %s is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the value.",
+                                  topic, len(content_bytes), self.max_message_size)
+                        return
                     # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
                     self.publish(topic=topic, qos=1, retain=True, payload=converted_value)
             elif self.topic_format == TopicFormat.JSON:
@@ -373,9 +390,17 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     result_dict['uni'] = unit
                 topic: str = f'{self.prefix}{element.get_absolute_path()}_json'
                 if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
+                    content_bytes = _encode_payload(json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
+                    if len(content_bytes) > self.max_message_size:
+                        LOG.error("The JSON value for topic %s is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the value.",
+                                  topic, len(content_bytes), self.max_message_size)
+                        return
+                    publish_properties: Properties = Properties(PacketTypes.PUBLISH)
+                    publish_properties.UserProperty = ("Content-Type", "application/json")
+                    publish_properties.UserProperty = ("content-encoding", "UTF-8")
                     # We publish with retain=True to make sure that the value is there even if no client is connected to the broker
                     self.publish(topic=topic, qos=1, retain=True,
-                                 payload=json.dumps(result_dict, cls=ExtendedWithNullEncoder, skipkeys=True, indent=4))
+                                 payload=content_bytes, properties=publish_properties)
             else:
                 raise NotImplementedError(f'Topic format {self.topic_format} not yet implemented')
         else:
@@ -490,7 +515,12 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if topic not in self.topics:
                 self._add_topic(topic=topic, with_filter=True, writeable=False, subscribe=False)
             topic = f'{self.prefix}/plugins/{self.plugin_id}/error/message'
-            self.publish(topic=topic, qos=1, retain=False, payload=message)
+            content_bytes = _encode_payload(message)
+            if len(content_bytes) > self.max_message_size:
+                LOG.error("The error message is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the error message.",
+                          len(content_bytes), self.max_message_size)
+            else:
+                self.publish(topic=topic, qos=1, retain=False, payload=content_bytes)
             if topic not in self.topics:
                 self._add_topic(topic=topic, with_filter=True, writeable=False, subscribe=False)
         if code != CarConnectivityErrors.SUCCESS:
@@ -518,6 +548,19 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         # reason_code 0 means success
         if reason_code == 0:
             LOG.info('Connected to MQTT broker')
+            if properties is not None:
+                if hasattr(properties, 'AssignedClientIdentifier') and properties.AssignedClientIdentifier is not None:
+                    self._client_id = properties.AssignedClientIdentifier
+                    LOG.info('Broker assigned client identifier: %s', self._client_id)
+                if hasattr(properties, 'MaximumPacketSize') and properties.MaximumPacketSize is not None:
+                    self.max_message_size = properties.MaximumPacketSize
+                    LOG.info('Broker supports maximum packet size of %d bytes', self.max_message_size)
+                if hasattr(properties, 'ServerKeepAlive') and properties.ServerKeepAlive is not None:
+                    if properties.ServerKeepAlive < self.keepalive:
+                        LOG.error('Broker supports keep alive of not more than %d seconds but is configured for %d seconds,'
+                                  ' please specify keepalive smaller than this in configuration',
+                                  properties.ServerKeepAlive, self.keepalive)
+                        self.disconnect()
             # register callback for carconnectivity events
             if self.republish_on_update:
                 observer_flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
@@ -558,7 +601,15 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             if self.with_full_json:
                 full_json_topic: str = f'{self.prefix}/full_json'
                 self._add_topic(full_json_topic, with_filter=True, subscribe=False, writeable=False)
-                self.publish(topic=full_json_topic, qos=1, retain=True, payload=self.car_connectivity.as_json(pretty=True))
+                content_bytes = _encode_payload(self.car_connectivity.as_json(pretty=True))
+                publish_properties: Properties = Properties(PacketTypes.PUBLISH)
+                publish_properties.UserProperty = ("Content-Type", "application/json")
+                publish_properties.UserProperty = ("content-encoding", "UTF-8")
+                if len(content_bytes) > self.max_message_size:
+                    LOG.error("The full JSON is too long to publish (size: %d bytes, max size: %d bytes). Not publishing the full JSON.",
+                              len(content_bytes), self.max_message_size)
+                else:
+                    self.publish(topic=full_json_topic, qos=1, retain=True, payload=content_bytes, properties=publish_properties)
         # Handle different reason codes
         else:
             self.plugin.connection_state._set_value(value=ConnectionState.ERROR)  # pylint: disable=protected-access
