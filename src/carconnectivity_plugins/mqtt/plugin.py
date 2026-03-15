@@ -301,7 +301,7 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             else:
                 cert_required: ssl.VerifyMode = ssl.CERT_REQUIRED
 
-            try:    
+            try:
                 self.mqtt_client.tls_set(ca_certs=self.active_config['tls_cafile'], certfile=self.active_config['tls_certfile'],
                                          keyfile=self.active_config['tls_keyfile'], cert_reqs=cert_required,
                                          tls_version=self.mqtttls_version)
