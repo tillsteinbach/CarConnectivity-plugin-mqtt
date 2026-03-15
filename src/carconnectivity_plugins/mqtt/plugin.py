@@ -301,9 +301,13 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
             else:
                 cert_required: ssl.VerifyMode = ssl.CERT_REQUIRED
 
-            self.mqtt_client.tls_set(ca_certs=self.active_config['tls_cafile'], certfile=self.active_config['tls_certfile'],
-                                     keyfile=self.active_config['tls_keyfile'], cert_reqs=cert_required,
-                                     tls_version=self.mqtttls_version)
+            try:    
+                self.mqtt_client.tls_set(ca_certs=self.active_config['tls_cafile'], certfile=self.active_config['tls_certfile'],
+                                         keyfile=self.active_config['tls_keyfile'], cert_reqs=cert_required,
+                                         tls_version=self.mqtttls_version)
+            except FileNotFoundError as exc:
+                raise ConfigurationError(f'One of the files for the TLS configuration was not found: {str(exc)}') from exc
+
             if self.active_config['tls_insecure']:
                 self.mqtt_client.tls_insecure_set(True)
         if self.active_config['username'] is not None:
