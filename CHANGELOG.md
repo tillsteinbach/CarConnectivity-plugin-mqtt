@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.10.1] - 2026-03-15
+### Fixed
+- Fixes a problem where the plugin would not catch an error from a missing TLS file, resulting in a wrong error message in carconnectivity
+
 ## [0.10] - 2026-02-06
 ### Added
 - Support for MQTT v5 properties in published messages, including content type and content encoding for JSON payloads
@@ -112,7 +116,8 @@ Note: This plugin is required for compatibility with CarConnectivity version 0.1
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.1
 [0.10]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10
 [0.9.2]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9.2
 [0.9.1]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.9.1
