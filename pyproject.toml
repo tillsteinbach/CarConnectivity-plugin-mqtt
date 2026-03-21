@@ -41,7 +41,7 @@ classifiers = [
 [project.optional-dependencies]
 connectors = [
     'carconnectivity-connector-volkswagen>=0.10.2',
-    'carconnectivity-connector-skoda>=0.11.8',
+    'carconnectivity-connector-skoda>=0.12.3',
     'carconnectivity-connector-seatcupra>=0.5.2',
     'carconnectivity-connector-tronity>=0.7.1',
 ]
