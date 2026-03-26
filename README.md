@@ -199,3 +199,9 @@ You can also provide the location of the netrc file in the configuration.
     }
 }
 ```
+## Known Issues
+Some MQTT Brokers cannot deal with large messages or have a standard limit configured that is too small to receive very large messages such as vehicle images.
+There are some solutions to this problem:
+- Configure a larger maximum message size in the broker to fix the main problem
+- If not possible to increase message size, check whether you can switch to MQTT v5. In this protocol version the broker can signal its maximum message size to the client
+- If this is not possible you can also run CarConnectivity without support for images.
