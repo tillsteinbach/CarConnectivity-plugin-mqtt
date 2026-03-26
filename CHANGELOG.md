@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.10.2] - 2026-03-26
+### Changed
+- Updated connector dependencies to latest versions to include latest fixes and improvements into docker images
+
 ## [0.10.1] - 2026-03-15
 ### Fixed
 - Fixes a problem where the plugin would not catch an error from a missing TLS file, resulting in a wrong error message in carconnectivity

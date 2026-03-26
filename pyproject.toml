@@ -46,9 +46,9 @@ connectors = [
     'carconnectivity-connector-tronity>=0.7.1',
 ]
 plugins = [
-    'carconnectivity-plugin-mqtt_homeassistant>=0.6.2',
+    'carconnectivity-plugin-mqtt_homeassistant>=0.6.4',
     'carconnectivity-plugin-abrp>=0.8.1',
-    'carconnectivity-plugin-homekit>=0.7.4',
+    'carconnectivity-plugin-homekit>=0.7.6',
     'carconnectivity-plugin-webui>=0.7.1',
     'carconnectivity-plugin-database>=0.4.2',
 ]
