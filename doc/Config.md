@@ -35,7 +35,7 @@ The `type` and config options specific to your connector or plugin can be found 
                 "config": {
                     "broker": "192.168.0.123", // Broker hostname or IP address
                     "username": "testuser", // Broker username to login
-                    "password": "testuser", // Broker password to login
+                    "password": "testuser"  // Broker password to login
                 }
             }
         ]
