@@ -135,7 +135,7 @@ Note: This plugin is required for compatibility with CarConnectivity version 0.1
 Initial release, let's go and give this to the public to try out...
 
 [unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10.5...HEAD
-[0.10.5]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10.4...v0.10.5
+[0.10.5]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.5
 [0.10.4]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.4
 [0.10.3]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.3
 [0.10.2]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.2
