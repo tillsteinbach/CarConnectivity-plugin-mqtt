@@ -340,8 +340,37 @@ class Plugin(BasePlugin):  # pylint: disable=too-many-instance-attributes
                 self._stop_event.wait(10)
 
     def _background_publish_topics_loop(self) -> None:
+        _last_connected: bool = True
+        _disconnected_since: Optional[float] = None
         while not self._stop_event.is_set():
             self.mqtt_client.publish_topics()
+            # ── MQTT connection health check ──
+            # Paho's loop_start() auto-reconnect can silently fail in some
+            # edge cases. This check detects a lingering disconnect and
+            # forces an explicit reconnect() as a safety net.
+            try:
+                if self.mqtt_client.is_connected():
+                    if not _last_connected:
+                        LOG.info('MQTT connection restored')
+                    _last_connected = True
+                    _disconnected_since = None
+                else:
+                    import time as _time
+                    now = _time.monotonic()
+                    if _last_connected:
+                        _disconnected_since = now
+                        _last_connected = False
+                        LOG.warning('MQTT health check: broker disconnected, waiting for auto-reconnect')
+                    elif _disconnected_since is not None and (now - _disconnected_since) > 15:
+                        LOG.warning('MQTT health check: still disconnected after %.0fs — forcing reconnect',
+                                    now - _disconnected_since)
+                        try:
+                            self.mqtt_client.reconnect()
+                            _disconnected_since = now  # reset timer for next attempt
+                        except Exception as reconnect_err:
+                            LOG.error('MQTT health check: reconnect failed: %s', reconnect_err)
+            except Exception as health_err:
+                LOG.debug('MQTT health check error: %s', health_err)
             self._stop_event.wait(10)
 
     def shutdown(self) -> None:

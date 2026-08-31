@@ -129,6 +129,9 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
 
         self.will_set(topic=f'{self.prefix}{self.plugin.connection_state.get_absolute_path()}', qos=1, retain=True,
                       payload=ConnectionState.DISCONNECTED.value)
+        # Use a shorter max reconnect delay so paho retries within 30s
+        # instead of backing off to the default 120s ceiling.
+        self.reconnect_delay_set(min_delay=1, max_delay=30)
 
     def add_on_connect_callback(self, callback: CallbackOnConnect) -> None:
         """
@@ -564,6 +567,7 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                                   ' please specify keepalive smaller than this in configuration',
                                   properties.ServerKeepAlive, self.keepalive)
                         self.disconnect()
+            LOG.info('Connected to MQTT broker')
             # register callback for carconnectivity events
             if self.republish_on_update:
                 observer_flags: Observable.ObserverEvent = (Observable.ObserverEvent.UPDATED
@@ -676,8 +680,11 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
         Returns:
             None
         """
-        self.car_connectivity.remove_observer(self._on_carconnectivity_event)
         if reason_code == 0:
+            # Only remove the observer on a clean disconnect; on unexpected
+            # disconnects keep it alive so state changes during the reconnect
+            # window are not silently dropped.
+            self.car_connectivity.remove_observer(self._on_carconnectivity_event)
             LOG.info('Client successfully disconnected')
         elif reason_code == 4:
             LOG.info('Client successfully disconnected: %s', userdata)
