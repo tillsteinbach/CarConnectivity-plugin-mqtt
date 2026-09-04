@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 - No unreleased changes so far
 
+## [0.10.6] - 2026-09-04
+### Changed
+- Updated dependencies to latest versions (carconnectivity, connectors and plugins)
+
 ## [0.10.5] - 2026-07-05
 ### Changed
 - Updated dependencies to latest versions (carconnectivity, connectors and plugins)
@@ -134,7 +138,8 @@ Note: This plugin is required for compatibility with CarConnectivity version 0.1
 ## [0.1] - 2025-01-25
 Initial release, let's go and give this to the public to try out...
 
-[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10.5...HEAD
+[unreleased]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/compare/v0.10.6...HEAD
+[0.10.6]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.6
 [0.10.5]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.5
 [0.10.4]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.4
 [0.10.3]: https://github.com/tillsteinbach/CarConnectivity-plugin-mqtt/releases/tag/v0.10.3
