@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import logging
+import hashlib
 
 from enum import Enum
 from datetime import datetime, timedelta, tzinfo, timezone
@@ -350,6 +351,20 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
             pass
         return super().disconnect(reasoncode, properties)
 
+    @staticmethod
+    def _format_value_for_log(value: Any) -> Any:
+        """Return a compact representation of values for debug logging.
+
+        Binary payloads, such as vehicle images, can be several megabytes large.
+        Logging their raw bytes makes debug logs hard to read and can fill log
+        storage quickly, so keep only metadata that is useful for diagnostics.
+        """
+        if isinstance(value, memoryview):
+            return f'<binary payload: {value.nbytes} bytes, sha256={hashlib.sha256(value).hexdigest()}>'
+        if isinstance(value, (bytes, bytearray)):
+            return f'<binary payload: {len(value)} bytes, sha256={hashlib.sha256(value).hexdigest()}>'
+        return value
+
     # pylint: disable-next=too-many-branches
     def _publish_element(self, element: Any) -> None:
         if element.enabled:
@@ -362,7 +377,9 @@ class CarConnectivityMQTTClient(Client):  # pylint: disable=too-many-instance-at
                     precision_tmp *= 10
                 value = round(value, precision_digits)
             converted_value = self.convert_value(value)
-            LOG.debug('%s%s, value changed: new value is: %s', self.prefix, element.get_absolute_path(), converted_value)
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.debug('%s%s, value changed: new value is: %s',
+                          self.prefix, element.get_absolute_path(), self._format_value_for_log(converted_value))
             if self.topic_format == TopicFormat.SIMPLE:
                 topic: str = f'{self.prefix}{element.get_absolute_path()}'
                 if self.topic_filter_regex is None or not self.topic_filter_regex.match(topic):
