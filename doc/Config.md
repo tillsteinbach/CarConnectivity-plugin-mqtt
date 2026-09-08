@@ -60,25 +60,25 @@ These are the valid options for the MQTT plugin
                     "password": "testuser", // Broker password to login
                     "netrc": "~/.netr", // netrc file if to be used for passwords
                     "clientid": "my_client", // Client id if should not be generated
-                    "prefix": "carconnectivity/0", // prefix for published topics
-                    "keepalive": 60, // MQTT keepalive value
-                    "version": "3.1", // MQTT Protocol version to use ["3.1", "3.1.1", "5"]
-                    "transport": "tcp", // Transport protocol ["tcp", "websockets", "unix"]
-                    "tls": true, // User TLS (will change standard port to 8883)
-                    "tls_insecure": true, // Allows TLS with insecure certificates
+                    "prefix": "carconnectivity/0", // prefix for published topics. Default: "carconnectivity/0"
+                    "keepalive": 60, // MQTT keepalive value. Default: 60
+                    "version": "3.1", // MQTT Protocol version to use ["3.1", "3.1.1", "5"]. Default: 3.1.1
+                    "transport": "tcp", // Transport protocol ["tcp", "websockets", "unix"]. Default: tcp
+                    "tls": true, // User TLS (will change standard port to 8883). Default: false
+                    "tls_insecure": true, // Allows TLS with insecure certificates. Default: false
                     "tls_cafile": "ca.cert", // CA certificate file
                     "tls_certfile": "client.cert", // Client certificate file
                     "tls_keyfile": "client.key", // Client secret key
-                    "tls_version": "tlsv1.2", // TLS Version used
-                    "ignore_for": 20, // Ignore messages for first IGNORE seconds after subscribe to aviod retained messages from the broker to make changes to the car
-                    "republish_on_update": true, // Republish all topics on every update, not just when the value changes.
-                    "retain_on_disconnect": true, // Do not publish empty message on disconnect to keep last value in broker
+                    "tls_version": "tlsv1.2", // TLS Version used. Default: tlsv1.2
+                    "ignore_for": 20, // Ignore messages for first IGNORE seconds after subscribe to aviod retained messages from the broker to make changes to the car. Default: 5
+                    "republish_on_update": true, // Republish all topics on every update, not just when the value changes. Default: false
+                    "retain_on_disconnect": true, // Do not publish empty message on disconnect to keep last value in broker. Default: false
                     "topic_filter_regex": "carconnectivity\.0\./garage/WVWAB312[0-9A-Z]+/.*",
                     "convert_timezone": "Europe/Berlin", // Timezone to convert when publishing times
                     "time_format": "%Y-%m-%dT%H:%M:%S%z", // Use custom time format 
                     "locale": "de_DE", // Locale for conversions, will be used instead of system locale
-                    "with_full_json": true, // Publish all data as a single json under prefix/full_json
-                    "image_format": "txt" // Image format to use for images, txt (for ascii art) or png (default)
+                    "with_full_json": true, // Publish all data as a single json under prefix/full_json. Default: false
+                    "image_format": "txt" // Image format to use for images, txt (for ascii art) or png. Default: png
                 }
             }
         ]
